@@ -9,6 +9,22 @@ This repository contains the work for the final project in MSDS 6371, using the 
 
 The Kaggle dataset includes 79 explanatory variables describing residential homes in Ames, Iowa, sold between 2006 and 2010. Our analyses address two distinct business and predictive questions:
 
+## Project Status
+
+| Pipeline Step              | Status     | Details                                      |
+|---------------------------|------------|----------------------------------------------|
+| Data Loading               | ✅ Complete | Both `train.csv` and `test.csv` loaded       |
+| Data Cleaning (Training)   | ✅ Complete | `train_cleaned.csv` created and saved        |
+| Data Cleaning (Test)       | 🔄 In Progress | 12 rows still contain NAs in `df_test_clean` |
+| Exploratory Data Analysis  | ✅ Complete | Analysis 1 (Century 21) + Shiny app done     |
+| Feature Engineering        | 🔄 In Progress | Transformations and imputations ongoing      |
+| Modeling (Multiple LR)     | 🔄 In Progress | Building and comparing candidate models      |
+| Model Diagnostics          | ⏳ Not Started | Residual analysis, influential points, etc.  |
+| Prediction & Submission    | ⏳ Not Started | Blocked by test set cleaning                 |
+| Final Report & Documentation | 🔄 In Progress | Report in progress                           |
+
+**Current Focus**: Finishing test data cleaning and building the predictive multiple linear regression model (Analysis 2).
+
 ### Analysis 1: Client-Focused Regression for Century 21 Ames
 Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. We investigated the relationship between **SalePrice** and living area (**GrLivArea**, scaled in 100 sq. ft. increments as preferred by realtors) and whether this relationship differs by neighborhood.
 
@@ -37,6 +53,7 @@ Housing-Prices-Regression/
 │   ├── test.csv                   # Test data for Kaggle submission (1459 obs)
 │   └── sample_submission.csv      # Kaggle submission template
 ├── code/
+│   ├── Data Cleaning.rmd.         # Notes and steps producing train_cleaned.csv and test_cleaned.csv
 │   ├── analysis1_century21.R      # Analysis 1: Neighborhood-specific regression
 │   ├── analysis2_predictive.R     # Analysis 2: Competing predictive models
 │   └── Executive_Summary.R

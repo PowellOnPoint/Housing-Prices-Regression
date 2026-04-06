@@ -1,0 +1,343 @@
+---
+title: "Data Cleaning and EDA"
+author: "Aaron Powell & Joshua Samuel"
+date: r.Sys.Date()
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(ggplot2)
+```
+
+## Data
+
+```{r}
+df = read.csv("data/train.csv")
+glimpse(df)
+```
+
+## Missing Values
+
+```{r}
+# NA values
+df |> 
+  summarize(across(everything(), ~sum(is.na(.x)), .names = "na_{.col}")) |> 
+  pivot_longer(everything()) |> 
+  filter(value > 0) |> 
+  arrange(desc(value))
+```
+
+Since lm() omits rows with missing values, we may need to address them before modeling. 
+PoolQC 1459 Missing Values. NA = No Pool and data type is catagorical/character. We can replace NA with "None" for this variable.
+MiscFeature 1406 Missing Values. NA = No MiscFeature and data type is catagorical/character. We can replace NA with "None" for this variable.
+Alley 1369 Missing Values. NA = No Alley and data type is catagorical/character. We can replace NA with "None" for this variable.
+Fence 1179 Missing Values. NA = No Fence and data type is catagorical/character. We can replace NA with "None" for this variable.
+FireplaceQu 690 Missing Values. NA = No Fireplace and data type is catagorical/character. We can replace NA with "None" for this variable.
+LotFrontage 259 Missing Values. LotFrontage is linear feet of street connected to proerty. It seems unreasonable to have 259 properties with no street access. Checking street access
+
+```{r}
+# Show all rows if LotFrontage = NA
+df_LotFrontageNA = df |> filter(is.na(LotFrontage))
+df_LotFrontageNA
+```
+
+All have paved street access, and no MSZones are agricultural. Additional LotConfig has some variables with multiple frontage indicated. Given this, we will impute the median LotFrontage to fill in these missing values as it seems likely these are data entry errors.
+
+Can LotArea or SalePrice help us predict LotFrontage?
+
+```{r}
+cor(df$LotArea, df$LotFrontage, use = "complete.obs")
+cor(df$SalePrice, df$LotFrontage, use = "complete.obs")
+ggplot(df, aes(x = LotArea, y = LotFrontage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "LotArea vs LotFrontage", x = "LotArea", y = "LotFrontage")
+ggplot(df, aes(x = SalePrice, y = LotFrontage)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "SalePrice vs LotFrontage", x = "SalePrice", y = "LotFrontage")
+```
+
+1299 935 1338 potential outliers
+
+See if log transformation helps resolve outliers, issues with normality and constant variance for a better prediction of LotFrontage:
+
+```{r}
+cor(log(df$LotArea), log(df$LotFrontage), use = "complete.obs")
+ggplot(df, aes(x = log(LotArea), y = log(LotFrontage))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Log(LotArea) vs LotFrontage", x = "Log(LotArea)", y = "Log(LotFrontage)")
+```
+
+```{r}
+# Check assumptions for linear regression to impute LotFrontage based on LotArea
+# Fit linear model
+lm_lotfrontage <- lm(log(LotFrontage) ~ log(LotArea), data = df)
+# Residuals vs Fitted plot
+plot(lm_lotfrontage, which = 1)
+# Normal Q-Q plot
+plot(lm_lotfrontage, which = 2)
+# Leverage
+plot(lm_lotfrontage, which = 5)
+# Histogram with normal distribution overlaid
+hist(lm_lotfrontage$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(lm_lotfrontage$residuals), sd = sd(lm_lotfrontage$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+summary(lm_lotfrontage)
+```
+
+our lm_lotfrontage model has 55% variance explained and the residuals look reasonably normal, with some outliers but not extreme leverage points. Given this, we will impute the missing LotFrontage values using this model.
+
+Back to parsing missing values in dataset:
+
+GarageType, GarageYrBlt, GarageFinish, GarageQual, GarageCond have 81 Missing Values. Are these all the same observations?
+
+```{r}
+# Show all rows if GarageType = NA
+df_GarageTypeNA = df |> filter(is.na(GarageType))
+df_GarageTypeNA
+# Count
+df_GarageTypeNA |> nrow()  # should be 81
+```
+
+Yes. These are 81 sales with no garage as GarageArea is 0 for all observations.
+GarageType 81 Missing Values. NA = No Garage and data type is catagorical/character. We can replace NA with "None" for this variable.
+GarageYrBlt 81 Missing Values. NA = No Garage and data type is numeric. We will replace NA with value from YearBuilt variable for these observations.
+GarageFinish 81 Missing Values. NA = No Garage and data type is catagorical/character. We can replace NA with "None" for this variable.
+GarageQual 81 Missing Values. NA = No Garage and data type is catagorical/character. We can replace NA with "None" for this variable.
+GarageCond 81 Missing Values. NA = No Garage and data type is catagorical/character. We can replace NA with "None" for this variable.
+
+back to parsing missing values in the dataset:
+BsmtExposure 38 Missing Values. NA = No Basement and data type is catagorical/character. We can replace NA with "None" for this variable.
+BsmtFinType2 38 Missing Values. NA = No Basement and data type is catagorical/character. We can replace NA with "None" for this variable.
+BsmtFinType1 37 Missing Values. NA = No Basement and data type is catagorical/character. We can replace NA with "None" for this variable.
+BsmtQual 37 Missing Values. NA = No Basement and data type is catagorical/character. We can replace NA with "None" for this variable.
+BsmtCond 37 Missing Values. NA = No Basement and data type is catagorical/character. We can replace NA with "None" for this variable
+Why is there 1 more missing value for BsmtFinType2 than the other 4 basement variables? We can check if there is a row with NA for BsmtFinType2 but not NA for the other 4 basement variables.
+
+```{r}
+# Show all rows if BsmtFinType2 = NA
+df_BsmtFinType2NA = df |> filter(is.na(BsmtFinType2))
+df_BsmtFinType2NA
+# Count
+df_BsmtFinType2NA |> filter(!is.na(BsmtExposure) | !is.na(BsmtFinType1) | !is.na(BsmtQual) | !is.na(BsmtCond))  # should be 1
+```
+
+ID 333 quality issue:
+
+```{r}
+df |>
+  filter(Id == 333) |>
+  summarise(
+    TotalBsmtSF = TotalBsmtSF,
+    BsmtFinSF1 = BsmtFinSF1,
+    BsmtFinSF2 = BsmtFinSF2,
+    BsmtUnfSF = BsmtUnfSF,
+    check = TotalBsmtSF - BsmtFinSF1 - BsmtFinSF2 - BsmtUnfSF
+  )
+```
+
+ID 333 is a 3 bed 2 bath with a basement bath and partial finish basement. Given this has a 3 card garage, overally qual 8 with Good Basement quality and condition, we will assume this 479 sqft of basement is finished and average quality, and condition. Hence BsmtFinType2 will be set to "ALQ".
+
+Back to parsing missing values in dataset:
+
+Check for same observations with missing values for MasVnrType and MasVnrArea:
+
+```{r}
+# Show all rows if MasVnrType = NA
+df_MasVnrTypeNA = df |> filter(is.na(MasVnrType))
+df_MasVnrTypeNA
+```
+Yes. Assuming data entry error, we will set MasVnrType to "None" for these 8 observations and MasVnrArea to 0.
+
+Electrical 1 Missing Value. NA = No Electrical and data type is catagorical/character. We can replace NA with "None" for this variable.
+Verifying the house sold like it has no electrical. 
+
+```{r}
+# Show all rows if Electrical = NA
+df_ElectricalNA = df |> filter(is.na(Electrical))
+df_ElectricalNA
+```
+ID 1380 is a 3 bed 2.5 bath built in 2006, 1394 sqft with a 2 car garage, gas furnance and central AC, overall quality 5 and sold as normal sale for $167500. Given this and utilities being AllPub for this observation, we will assume this is a data entry error and set Electrical to "SBrkr" which is the most common value for this variable. SBrkr is standard circuit and romex which is code for most 2006 builds. 
+
+Final check if the sale price is an average normal sale given overall quality and neighborhood:
+
+```{r}
+# Average sale price for overall quality 5
+df |>
+  filter(OverallQual == 5) |>
+  filter(Neighborhood == 'Timber') |>
+  summarise(avg_sale_price = mean(SalePrice))
+```
+
+## Duplicates and Blanks
+
+```{r}
+# Duplicates
+df |> get_dupes() |> nrow()  # should be 0 for this dataset
+```
+
+No Duplicates
+
+```{r}
+# Count blank strings (empty "") in character columns
+df |> 
+  select(where(is.character)) |> 
+  summarize(
+    across(everything(), 
+           ~sum(.x == "", na.rm = TRUE),
+           .names = "blank_{.col}")
+  ) |> 
+  pivot_longer(everything(), names_to = "column", values_to = "blank_count") |> 
+  filter(blank_count > 0)
+```
+NO character blanks / empty strings.
+
+## Apply data cleaning steps to training data set
+
+Since lm() will omit rows with missing values, and these observations still have incredible prediction power, we will need to clean both train.csv and test.csv datasets. The kaggle competition does not require us to submit a model that handles the NA values for us, so we will proceed with cleaning both datasets. 
+
+```{r}
+# Clean train dataset
+df_clean <- df |> 
+  mutate(
+    # Replace NA with "None" for categorical variables where NA = No feature
+    across(c(PoolQC, MiscFeature, Alley, Fence, FireplaceQu,
+             GarageType, GarageFinish, GarageQual, GarageCond,
+             BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2),
+           ~replace_na(.x, "None")),
+    
+    MasVnrType = replace_na(MasVnrType, "None"),
+    Electrical = replace_na(Electrical, "SBrkr"),
+    
+    # Numeric imputations
+    MasVnrArea = replace_na(MasVnrArea, 0),
+    
+    # Garage year - use YearBuilt when missing
+    GarageYrBlt = if_else(is.na(GarageYrBlt), YearBuilt, GarageYrBlt),
+    
+    # Specific data quality fixes
+    BsmtFinType2 = if_else(Id == 333, "ALQ", BsmtFinType2),
+    Electrical = if_else(Id == 1380, "SBrkr", Electrical)
+  ) |> 
+  # Impute LotFrontage using the regression model we built
+  mutate(
+    LotFrontage = if_else(
+      is.na(LotFrontage),
+      exp(predict(lm_lotfrontage, newdata = tibble(LotArea = LotArea))),
+      LotFrontage
+    )
+  )
+
+# Final check
+skimr::skim(df_clean)
+```
+
+Review the effect of lotfrontage imputation:
+```{r}
+# Add flag to identify imputed values before plotting
+df_clean <- df_clean |>
+  mutate(imputed = is.na(df$LotFrontage))
+ggplot(df_clean, aes(x = LotArea, y = LotFrontage, color = imputed)) +
+  geom_point(alpha = 0.7, size = 1.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 1) +
+  scale_color_manual(
+    values = c("FALSE" = "#1f77b4", "TRUE" = "#d62728"),
+    labels = c("Original", "Imputed")
+  ) +
+  labs(
+    title = "LotArea vs LotFrontage (Cleaned)",
+    x = "LotArea (sq ft)",
+    y = "LotFrontage (ft)",
+    color = "Data Source"
+  ) +
+  theme_bw(base_size = 18)
+```
+
+Our model for imputing LotFrontage seems to have done a good job of filling in the missing values in a way that is consistent with the overall relationship between LotArea and LotFrontage. The imputed values (in red) generally follow the same trend as the original data (in blue), which suggests that our linear regression model is a reasonable choice for imputation in this case.
+
+## Apply data cleaning steps to test dataset
+```{r}
+# Clean test dataset
+df_test = read.csv("data/test.csv")
+df_test |> 
+  summarize(across(everything(), ~sum(is.na(.x)), .names = "na_{.col}")) |> 
+  pivot_longer(everything()) |> 
+  filter(value > 0) |> 
+  arrange(desc(value)) %>% print(n = 33)
+```
+
+it looks like the test data will have some abnormalities we haven't seen yet.
+
+```{r}
+# Clean train dataset
+df_test_clean <- df_test |> 
+  mutate(
+    # Replace NA with "None" for categorical variables where NA = No feature
+    across(c(PoolQC, MiscFeature, Alley, Fence, FireplaceQu,
+             GarageType, GarageFinish, GarageQual, GarageCond,
+             BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2),
+           ~replace_na(.x, "None")),
+    
+    MasVnrType = replace_na(MasVnrType, "None"),
+    Electrical = replace_na(Electrical, "SBrkr"),
+    
+    # Numeric imputations
+    MasVnrArea = replace_na(MasVnrArea, 0),
+    
+    # Garage year - use YearBuilt when missing
+    GarageYrBlt = if_else(is.na(GarageYrBlt), YearBuilt, GarageYrBlt),
+    
+    # Specific data quality fixes
+    BsmtFinType2 = if_else(Id == 333, "ALQ", BsmtFinType2),
+    Electrical = if_else(Id == 1380, "SBrkr", Electrical)
+  ) |> 
+  # Impute LotFrontage using the regression model we built
+  mutate(
+    LotFrontage = if_else(
+      is.na(LotFrontage),
+      exp(predict(lm_lotfrontage, newdata = tibble(LotArea = LotArea))),
+      LotFrontage
+    )
+  )
+
+# Final check
+skimr::skim(df_test_clean)
+```
+
+Checking for those abnoramlities after cleaning.
+```{r}
+df_test_clean |> 
+  summarize(across(everything(), ~sum(is.na(.x)), .names = "na_{.col}")) |> 
+  pivot_longer(everything()) |> 
+  filter(value > 0) |> 
+  arrange(desc(value))
+```
+
+Viewing all obervations with missing values after cleaning to understand what we are still missing in the test dataset:
+
+```{r}
+# Show all rows with any NA values
+df_test_clean |> 
+  filter(if_any(everything(), is.na))
+```
+
+After we fit a model, predict() will return NA if any explanatory variable is NA for a given observation. We will need to address how to handle these missing values if our model includes any of these variables. For this reason we will not output a cleaned test dataset yet.
+
+## Output cleaned dataset
+
+```{r}
+write_csv(df_clean, "data/train_cleaned.csv")
+```
