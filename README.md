@@ -29,7 +29,6 @@ We built and compared multiple linear regression models (limited to techniques c
 - The best model was selected based on predictive performance and submitted to Kaggle.
 
 ## Repository Structure
-Housing-Prices-Regression/
 
 ```
 Housing-Prices-Regression/
@@ -71,7 +70,7 @@ All analyses were performed in **R** Full, well-commented code is available in t
 
 ## Technologies
 - **Language**: R (100%)
-- **Tools**: RStudio, `ggplot2`, `shiny`, `dplyr`, `lm()`, `influence.measures()`, 'x.Ai API'
+- **Tools**: RStudio, `ggplot2`, `shiny`, `dplyr`, `lm()`, `influence.measures()`, `x.Ai API`
 - **License**: MIT
 
 ## How to Reproduce
