@@ -30,15 +30,26 @@ We built and compared multiple linear regression models (limited to techniques c
 
 ## Repository Structure
 Housing-Prices-Regression/
-├── train.csv                  # Training data (1460 observations)
-├── test.csv                   # Test data (1459 observations)
-├── sample_submission.csv      # Kaggle submission format
-├── Rshiny EDA/                # RShiny app files for interactive EDA
-├── [Your Project Paper].pdf   # Final report (≤7 pages + appendix)
-├── code/                      # SAS and/or R scripts (Analysis 1 & 2)
-│   ├── analysis1_...
-│   └── analysis2_...
-└── README.md
+
+```
+Housing-Prices-Regression/
+├── data/
+│   ├── train.csv                  # Training data with SalePrice (1460 obs)
+│   ├── test.csv                   # Test data for Kaggle submission (1459 obs)
+│   └── sample_submission.csv      # Kaggle submission template
+├── code/
+│   ├── analysis1_century21.R      # Analysis 1: Neighborhood-specific regression
+│   ├── analysis2_predictive.R     # Analysis 2: Competing predictive models
+│   └── Executive_Summary.R
+├── shiny_app/                     # RShiny interactive dashboard
+│   ├── app.R                      # Base app
+│   └── chart_functions.R.         # Helper functions
+│   └── data_descriptions.txt
+├── MSDS6371_Final_Project_Report.pdf   # Main paper
+├── appendix_code.pdf              # Full commented code
+├── README.md
+├── LICENSE
+```
 
 ## Key Techniques Demonstrated
 - Data cleaning and exploratory data analysis (EDA)
