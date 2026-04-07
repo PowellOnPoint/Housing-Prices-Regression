@@ -1,0 +1,129 @@
+---
+title: "6371 - Modeling"
+author: "Josh"
+date: "2026-04-07"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Libraries
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+# Reading in Data
+```{r}
+df = read.csv("/Users/joshtsamuel/SMU/Housing-Prices-Regression/Data/train_cleaned.csv")
+
+df_n = df %>% filter(Neighborhood %in% c("NAmes", "Edwards", "BrkSide"))
+```
+
+# Modeling & Assumptions
+```{r}
+## For Whole Dataset
+
+# Assumptions
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df)
+
+# Assumptions for Model 1
+par(mfrow = c(2,2))
+plot(fit1)
+par(mfrow = c(1,1))
+
+# Assumptions for Model 2
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+
+# R did not plot obs 600 & 957 due to leverage being one
+df[c(600,957),]
+
+
+
+# Assumptions appear better satisfied for full data set when looking at log-linear model than non-log model
+
+
+## For Just the Three Neighborhoods
+
+# Assumptions
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+
+# Assumptions for Model 1
+par(mfrow = c(2,2))
+plot(fit1)
+par(mfrow = c(1,1))
+
+# Assumptions for Model 2
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+
+
+### Comparing the Metrics
+
+set.seed(123)
+
+# splitting train data into train/test
+n <- nrow(df_n)
+train_idx <- sample(seq_len(n), size = 0.7 * n)
+
+train_df <- df_n[train_idx, ]
+test_df  <- df_n[-train_idx, ]
+
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = train_df)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = train_df)
+
+
+# predictions
+pred_fit1 <- predict(fit1, newdata = test_df)
+
+pred_log <- predict(fit2, newdata = test_df)
+smear <- mean(exp(residuals(fit2)))
+pred_fit2 <- exp(pred_log) * smear
+
+# metrics
+rmse <- function(actual, pred) {
+  sqrt(mean((actual - pred)^2))
+}
+
+mae <- function(actual, pred) {
+  mean(abs(actual - pred))
+}
+
+r2_test <- function(actual, pred) {
+  1 - sum((actual - pred)^2) / sum((actual - mean(actual))^2)
+}
+
+results <- data.frame(
+  Model = c("Original Scale", "Log Scale Back-Transformed"),
+  RMSE  = c(
+    rmse(test_df$SalePrice, pred_fit1),
+    rmse(test_df$SalePrice, pred_fit2)
+  ),
+  MAE   = c(
+    mae(test_df$SalePrice, pred_fit1),
+    mae(test_df$SalePrice, pred_fit2)
+  ),
+  Test_R2 = c(
+    r2_test(test_df$SalePrice, pred_fit1),
+    r2_test(test_df$SalePrice, pred_fit2)
+  )
+)
+
+results
+
+# non-log model appears to be outperforming log model on test data (partition of training data)
+
+```
+
+
+```{r}
+
+
+
+```
