@@ -62,6 +62,9 @@ ggplot(df, aes(x = SalePrice, y = LotFrontage)) +
 ```
 
 1299 935 1338 potential outliers
+314 is a 5 acre property with 150 ft of frontage. We will remove as an outlier for the purpose of imputing LotFrontage.
+
+
 
 See if log transformation helps resolve outliers, issues with normality and constant variance for a better prediction of LotFrontage:
 
@@ -76,7 +79,7 @@ ggplot(df, aes(x = log(LotArea), y = log(LotFrontage))) +
 ```{r}
 # Check assumptions for linear regression to impute LotFrontage based on LotArea
 # Fit linear model
-lm_lotfrontage <- lm(log(LotFrontage) ~ log(LotArea), data = df)
+lm_lotfrontage <- lm(log(LotFrontage) ~ log(LotArea), data = df, subset = -314)  # Exclude outlier
 # Residuals vs Fitted plot
 plot(lm_lotfrontage, which = 1)
 # Normal Q-Q plot
