@@ -267,6 +267,9 @@ ggplot(df_clean, aes(x = LotArea, y = LotFrontage, color = imputed)) +
     color = "Data Source"
   ) +
   theme_bw(base_size = 18)
+
+# Remove imputed flag for further analysis
+df_clean <- df_clean |> select(-imputed)
 ```
 
 Our model for imputing LotFrontage seems to have done a good job of filling in the missing values in a way that is consistent with the overall relationship between LotArea and LotFrontage. The imputed values (in red) generally follow the same trend as the original data (in blue), which suggests that our linear regression model is a reasonable choice for imputation in this case.

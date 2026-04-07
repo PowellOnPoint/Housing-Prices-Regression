@@ -7,20 +7,32 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-library(tidyverse
+library(tidyverse)
 library(ggplot2)
+library(car)
+source("code/utils_data_prep.R") # Data cleaned and prepped for LR
 ```
 
-## Data Loading and Preparation
+## Initial Multiple Linear Regression review
+
+We will proceed with log(SalePrice) since Analysis 1 displayed some heteroscedasticity. 
 
 ```{r}
-train = read.csv('Data/train_cleaned.csv')
+full_model <- lm(log(SalePrice) ~ ., data = train)
+summary(full_model)
+```
+
+The summary of the full model NA values for several predictors. This is likely due to perfect multicollinearity (e.g., YearBuilt and YearRemodAdd are highly correlated). 
+
+```{r}
+full_model <- lm(log(SalePrice) ~ . - YearRemodAdd, data = train) # found YearRemodAdd perfectly collinear with YearBuilt
+summary(full_model)
+vif_values <- vif(full_model)
+print(vif_values[vif_values > 5]) # start with the most extreme VIF values and work down
 ```
 
 
-# - Load train_cleaned.csv and test_cleaned.csv (or raw + cleaning steps if needed).
-# - Convert character/factor variables appropriately (especially categorical predictors).
-# - Handle any remaining missing values (imputation or removal, justified).
+
 # - Create key derived features (examples relevant to our course):
 #     - log_SalePrice (for modeling and Kaggle submission)
 #     - HouseAge = YrSold - YearBuilt
