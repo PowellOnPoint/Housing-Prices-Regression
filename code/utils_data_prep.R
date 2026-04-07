@@ -12,6 +12,7 @@
 # =============================================================================
 
 library(tidyverse)
+library(caret)
 
 # =============================================================================
 # Section 1: Data Loading and Initial Preparation (factoring)
@@ -112,9 +113,17 @@ test <- test |>
 # =============================================================================
 
 # Constants and sequential/irrelevant columns
-Removed <- c("Id")  # sequential, no predictive value
-# YearRemodAdd is perfectly collinear with YearBuilt in this dataset
-if ("YearRemodAdd" %in% names(train)) Removed <- c(Removed, "YearRemodAdd")
+# 95% usage is considered constant value
+Removed = c(
+  "Id", # sequential, no predictive value
+  "GarageYrBlt", # Highly Correlated with YearBuilt
+  "YearRemodAdd", # Highly Correlated with YearBuilt
+  "GarageCars", # Paired with GarageArea
+  "Utilities", # 99.9% of values are "AllPub", no predictive value
+  "Street", # 99.8% of values are "Pave", no predictive value
+  "PoolQC", # 99.5% of values are "None", no predictive value
+  "MiscFeature" # 96.7% of values are "None", no predictive value
+)
 
 # Drop identified columns from both datasets
 train <- train |> select(-any_of(Removed))

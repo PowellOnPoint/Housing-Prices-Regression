@@ -15,19 +15,19 @@ The Kaggle dataset includes 79 explanatory variables describing residential home
 
 | Step | Pipeline Stage                              | Status      | Notes / Next Steps |
 |------|---------------------------------------------|-------------|--------------------|
-| 1    | **Data Understanding & Loading**            | ✅ Complete | `train.csv` (1460 obs) and `test.csv` loaded; reviewed `data_description.txt` |
-| 2    | **Data Cleaning & Preprocessing**           | 🔄 In Progress | Training set nearly clean; test set NA imputation and factor cleaning still in progress |
-| 3    | **Exploratory Data Analysis (EDA)**         | ✅ Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
-| 4    | **Analysis 1 – Century 21 Client Model**    | 🔄 In Progress | Interaction model (`SalePrice ~ GrLivArea * Neighborhood`) built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; assumption checks & Cook’s D next |
-| 5    | **Feature Engineering & Transformations**   | 🔄 In Progress | log(SalePrice), selected interactions, and dummy variables underway |
-| 6    | **Analysis 2 – Predictive Modeling**        | 🔄 In Progress | SLR baseline and initial MLR (`GrLivArea + FullBath`) complete; enhanced MLR with interactions in progress |
-| 7    | **Model Diagnostics & Assumption Checking** | ⏳ Not Started | Residual plots, normality, homoscedasticity, Cook’s D, leverage, and VIF for all models |
-| 8    | **Model Comparison & Selection**            | ⏳ Not Started | Adjusted R², CV PRESS, AIC; prepare comparison table |
-| 9    | **Prediction & Kaggle Submission**          | ⏳ Not Started | Generate predictions on cleaned test set using best model |
-| 10   | **Final Report & Documentation**            | 🔄 In Progress | Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
+| 1    | **Data Understanding & Loading**            | ✅Complete | `train.csv` (1460 obs) and `test.csv` loaded; reviewed `data_description.txt` |
+| 2    | **Data Cleaning & Preprocessing**           | ✅Complete | Training set nearly clean; test set NA imputation and factor cleaning still in progress |
+| 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
+| 4    | **Analysis 1 – Century 21 Client Model**    | 🔄In Progress | Interaction model (`SalePrice ~ GrLivArea * Neighborhood`) built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; assumption checks & Cook’s D next |
+| 5    | **Feature Engineering & Transformations**   | 🔄In Progress | log(SalePrice), selected interactions, and dummy variables underway |
+| 6    | **Analysis 2 – Predictive Modeling**        | 🔄In Progress | SLR & MLR (`GrLivArea + FullBath`) complete; enhanced MLR with interactions in progress |
+| 7    | **Model Diagnostics & Assumption Checking** | 🔄In Progress | Residual plots, normality, homoscedasticity, Cook’s D, leverage, and VIF for all models |
+| 8    | **Model Comparison & Selection**            | ⏳Not Started | Adjusted R², CV PRESS, AIC; prepare comparison table |
+| 9    | **Prediction & Kaggle Submission**          | ⏳Not Started | Generate predictions on cleaned test set using best model |
+| 10   | **Final Report & Documentation**            | 🔄In Progress|  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
 
-**Current Focus (as of April 6, 2026)**:  
-Finish test-set cleaning → complete assumption checks and influential point analysis for Analysis 1 → diagnose and compare models for Analysis 2.
+**Current Focus (as of April 7, 2026)**:  
+Complete assumption checks and influential point analysis for Analysis 1 → diagnose and compare models for Analysis 2.
 
 ### Analysis 1: Client-Focused Regression for Century 21 Ames
 Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. We investigated the relationship between **SalePrice** and living area (**GrLivArea**, scaled in 100 sq. ft. increments as preferred by realtors) and whether this relationship differs by neighborhood.
@@ -41,7 +41,7 @@ Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** 
 We built and compared multiple linear regression models (limited to techniques covered in MSDS 6371) to predict **SalePrice** across all neighborhoods:
 
 - **Candidate Models**:
-  - Simple Linear Regression (SLR) – one explanatory variable.
+  - Simple Linear Regression (SLR) – `GrLivArea`.
   - Multiple Linear Regression (MLR1) – `SalePrice ~ GrLivArea + FullBath`.
   - Additional MLR model(s) with feature selection, transformations, and interactions.
 
@@ -54,16 +54,18 @@ We built and compared multiple linear regression models (limited to techniques c
 Housing-Prices-Regression/
 ├── data/
 │   ├── train.csv                  # Training data with SalePrice (1460 obs)
+│   ├── train_cleaned.csv          # Cleaned training data (1460 obs)
 │   ├── test.csv                   # Test data for Kaggle submission (1459 obs)
+│   ├── test_cleaned.csv           # Cleaned test data for Kaggle submission (1459 obs)
 │   └── sample_submission.csv      # Kaggle submission template
 ├── code/
 │   ├── Data Cleaning.rmd.         # Notes and steps producing train_cleaned.csv and test_cleaned.csv
 │   ├── analysis1_century21.R      # Analysis 1: Neighborhood-specific regression
 │   ├── analysis2_predictive.R     # Analysis 2: Competing predictive models
+│   ├── utils_data_prep.R          # Data preparation utilities for predictive modeling
 │   └── Executive_Summary.R
 ├── shiny_app/                     # RShiny interactive dashboard
 │   ├── app.R                      # Base app
-│   └── chart_functions.R.         # Helper functions
 │   └── data_descriptions.txt
 ├── MSDS6371_Final_Project_Report.pdf   # Main paper
 ├── appendix_code.pdf              # Full commented code

@@ -9,29 +9,77 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(GGally)
 library(car)
 source("code/utils_data_prep.R") # Data cleaned and prepped for LR
 ```
 
-## Initial Multiple Linear Regression review
+## Simple Linear Regression
+
+Taking a simple approach first, we will model log(SalePrice) as a function of Above grade (ground) living area square feet (GrLivArea). GrLivArea is a strong predictor of SalePrice and is commonly used in housing price models.
+
+```{r}
+saleprice_cor <- cor_matrix[, "SalePrice"]
+cor_df <- tibble(
+  Variable = names(saleprice_cor),
+  Correlation = round(saleprice_cor, 3),
+  Abs_Correlation = abs(Correlation)
+) |>
+  arrange(desc(Abs_Correlation))
+print("Top variables by |correlation| with SalePrice:")
+print(cor_df, n = 10)
+```
+
+```{r}
+model_slr <- lm(log(SalePrice) ~ GrLivArea, data = train, subset = c(-1299, -524)) # Exclude outlier 1299 and 524
+summary(model_slr)
+par(mfrow = c(2, 2))
+plot(model_slr)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(model_slr$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(model_slr$residuals), sd = sd(model_slr$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+```
+
+1299 remains an outlier. It is a 5600 sqft house sold as a unfinished build for 160,000. This is an extreme case and likely not representative of the general market, so we will exclude it from our modeling.
+
+524 is a 4700 sqft house sold for 184750 as a partial unfinished new build, which represents another extreme case. For SLR we are not considering any other factor than GrLivArea so we will exclude this special case.
+
+## Initial Multiple Linear Regression
+
+## Full Multiple Linear Regression
 
 We will proceed with log(SalePrice) since Analysis 1 displayed some heteroscedasticity. 
 
 ```{r}
 full_model <- lm(log(SalePrice) ~ ., data = train)
-summary(full_model)
+par(mfrow = c(2, 2))
+plot(full_model)
+par(mfrow = c(1, 1))
 ```
+
+
+
 
 The summary of the full model NA values for several predictors. This is likely due to perfect multicollinearity (e.g., YearBuilt and YearRemodAdd are highly correlated). 
 
 ```{r}
-full_model <- lm(log(SalePrice) ~ . - YearRemodAdd, data = train) # found YearRemodAdd perfectly collinear with YearBuilt
-summary(full_model)
 vif_values <- vif(full_model)
 print(vif_values[vif_values > 5]) # start with the most extreme VIF values and work down
 ```
 
 
+outline
 
 # - Create key derived features (examples relevant to our course):
 #     - log_SalePrice (for modeling and Kaggle submission)
@@ -103,8 +151,3 @@ print(vif_values[vif_values > 5]) # start with the most extreme VIF values and w
 # 10. Session Info and Reproducibility --------------------------------
 # sessionInfo()
 # Save any plots/tables for the report appendix
-
-# ========================================================
-# End of Script
-# Remember: All code must be well-commented and runnable by the instructor.
-# ========================================================
