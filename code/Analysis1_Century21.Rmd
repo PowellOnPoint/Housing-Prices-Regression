@@ -16,8 +16,8 @@ library(ggplot2)
 
 # Reading in Data
 ```{r}
-df = read.csv("/Users/joshtsamuel/SMU/Housing-Prices-Regression/Data/train_cleaned.csv")
-
+source("code/utils_data_prep.R") # Data cleaned and prepped for LR
+df = train
 df_n = df %>% filter(Neighborhood %in% c("NAmes", "Edwards", "BrkSide"))
 ```
 
@@ -43,7 +43,6 @@ par(mfrow = c(1,1))
 df[c(600,957),]
 
 
-
 # Assumptions appear better satisfied for full data set when looking at log-linear model than non-log model
 
 
@@ -62,6 +61,8 @@ par(mfrow = c(1,1))
 par(mfrow = c(2,2))
 plot(fit2)
 par(mfrow = c(1,1))
+
+df_n[c(339),]
 
 
 ### Comparing the Metrics
