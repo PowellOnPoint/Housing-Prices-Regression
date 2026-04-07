@@ -1,0 +1,98 @@
+---
+title: "Analysis 2: Predictive Modeling for House Prices"
+description: "This analysis focuses on building predictive models to forecast future trends based on historical data.
+author: "Aaron Powell & Joshua Samuel"
+date: r.Sys.Date()
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse
+library(ggplot2)
+```
+
+## Data Loading and Preparation
+
+```{r}
+train = read.csv('Data/train_cleaned.csv')
+```
+
+
+# - Load train_cleaned.csv and test_cleaned.csv (or raw + cleaning steps if needed).
+# - Convert character/factor variables appropriately (especially categorical predictors).
+# - Handle any remaining missing values (imputation or removal, justified).
+# - Create key derived features (examples relevant to our course):
+#     - log_SalePrice (for modeling and Kaggle submission)
+#     - HouseAge = YrSold - YearBuilt
+#     - TotalSF = GrLivArea + TotalBsmtSF
+#     - TotalBath = FullBath + HalfBath + BsmtFullBath*0.5 + BsmtHalfBath*0.5
+#     - Quality interactions or dummy variables for high-impact categoricals (e.g., OverallQual, Neighborhood, ExterQual, KitchenQual)
+#     - Any other feature creation justified by domain knowledge or EDA (e.g., log transformations on skewed continuous vars like LotArea, GrLivArea).
+# - Filter or subset if needed, but remember: Analysis 2 uses ALL neighborhoods.
+
+# 3. Exploratory Data Analysis (EDA) for Modeling --------------------
+# - Summary statistics and correlations (focus on SalePrice and key predictors).
+# - Visualizations: scatterplots (SalePrice vs. GrLivArea, colored by key factors), histograms of SalePrice (and log(SalePrice)), boxplots by categorical vars.
+# - Identify potential transformations and interactions early.
+
+# 4. Model 1: Simple Linear Regression (Baseline) ---------------------
+# - Formula: log(SalePrice) ~ GrLivArea   (or SalePrice if you prefer; discuss choice)
+# - Fit with lm()
+# - Store model object (e.g., model_slr)
+# - Basic summary and initial diagnostics
+
+# 5. Model 2: Required Multiple Linear Regression (MLR1) --------------
+# - Formula: log(SalePrice) ~ GrLivArea + FullBath
+# - Fit with lm()
+# - Store as model_mlr1
+
+# 6. Model 3+: Enhanced Multiple Linear Regression Models -------------
+# - Build at least one (ideally 2–3) improved models using techniques from class:
+#     - Add meaningful predictors (e.g., OverallQual, HouseAge, TotalSF, Neighborhood as factor/dummies, ExterQual, etc.)
+#     - Include transformations (log(GrLivArea), sqrt(LotArea), etc.)
+#     - Add interactions (e.g., GrLivArea * OverallQual, GrLivArea * Neighborhood, YearBuilt * Remod)
+#     - Feature selection: forward/backward/stepwise (stepAIC or manual), or correlation/VIF screening
+# - Example enhanced model: log(SalePrice) ~ log(GrLivArea) + OverallQual + HouseAge + TotalBath + Neighborhood + GrLivArea:OverallQual + ...
+# - Fit each as model_mlr2, model_mlr3, etc.
+# - Comment heavily on why each variable/interaction was added.
+
+# 7. Model Diagnostics and Assumption Checking (Critical!) ------------
+# For EVERY model (SLR, MLR1, and enhanced):
+#   a. Residual plots:
+#      - Residuals vs. Fitted (check linearity & homoscedasticity)
+#      - Normal Q-Q plot (normality of residuals)
+#      - Scale-Location plot
+#      - Residuals vs. Leverage (outliers/influential points)
+#   b. Influential point analysis:
+#      - Cook's Distance (> 4/n threshold)
+#      - Leverage (hat values > 2p/n)
+#      - DFFITS, DFBETAS if needed
+#   c. Multicollinearity: VIF (variance inflation factors) – address if > 5–10
+#   d. Address violations:
+#      - Transformations already in model?
+#      - Remove influential points? (justify with sensitivity analysis)
+#      - Add polynomial terms or interactions if curvature present?
+# - Create diagnostic plot functions or loops to avoid repetition.
+
+# 8. Model Comparison and Evaluation ----------------------------------
+# - Create a comparison table (as required in the project description):
+#   Columns: Model, Adjusted R², CV PRESS (use PRESS statistic or cvTools/ caret for cross-validation), AIC, Kaggle Score (RMSE on log scale)
+# - Compute internal CV PRESS (e.g., via leave-one-out or k-fold)
+# - Generate predictions on test set for Kaggle:
+#     - Predict log(SalePrice), exponentiate back to SalePrice
+#     - Create submission.csv with Id and SalePrice
+#     - Note the public Kaggle score for each model
+# - Clearly state which model is "best" and why (balance of fit, assumptions, predictive performance, parsimony).
+
+# 9. Best Model Selection and Kaggle Submission -----------------------
+# - Export the final submission file(s)
+# - Optional: Save model objects (RDS) for Shiny app or report reproducibility
+
+# 10. Session Info and Reproducibility --------------------------------
+# sessionInfo()
+# Save any plots/tables for the report appendix
+
+# ========================================================
+# End of Script
+# Remember: All code must be well-commented and runnable by the instructor.
+# ========================================================
