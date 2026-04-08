@@ -19,15 +19,15 @@ The Kaggle dataset includes 79 explanatory variables describing residential home
 | 2    | **Data Cleaning & Preprocessing**           | ✅Complete | Training set nearly clean; test set NA imputation and factor cleaning still in progress |
 | 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
 | 4    | **Analysis 1 – Century 21 Client Model**    | 🔄In Progress | Interaction model built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; interpretations and confidence intervals next |
-| 5    | **Feature Engineering & Transformations**   | 🔄In Progress | log(SalePrice), selected interactions, and dummy variables underway |
-| 6    | **Analysis 2 – Predictive Modeling**        | 🔄In Progress | SLR & MLR (`GrLivArea + FullBath`) complete; enhanced MLR with interactions in progress |
-| 7    | **Model Diagnostics & Assumption Checking** | 🔄In Progress | Residual plots, normality, homoscedasticity, Cook’s D, leverage, and VIF for all models |
-| 8    | **Model Comparison & Selection**            | ⏳Not Started | Adjusted R², CV PRESS, AIC; prepare comparison table |
-| 9    | **Prediction & Kaggle Submission**          | ⏳Not Started | Generate predictions on cleaned test set using best model |
-| 10   | **Final Report & Documentation**            | 🔄In Progress|  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
+| 5    | **Feature Engineering & Transformations**   | ✅Complete | log(SalePrice), selected interactions, and dummy variables underway |
+| 6    | **Analysis 2 – Predictive Modeling**        | ✅Complete | Models complete; Diagnostic and results below |
+| 7    | **Model Diagnostics & Assumption Checking** | ✅Complete | Assumptions met! |
+| 8    | **Model Comparison & Selection**            | ✅Complete | Adjusted R², CV PRESS, AIC; prepare comparison table |
+| 9    | **Prediction & Kaggle Submission**          | 🔄In Progress | Generate predictions on cleaned test set using best model |
+| 10   | **Final Report & Documentation**            | 🔄In Progress |  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
 
 **Current Focus (as of April 7, 2026)**:  
-Estimates, interpretations and confidence intervals for Analysis 1 → diagnose and compare models for Analysis 2.
+Estimates, interpretations and confidence intervals for Analysis 1 → Kaggle Scores Analysis 2.
 
 ### Analysis 1: Client-Focused Regression for Century 21 Ames
 Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. We investigated the relationship between **SalePrice** and living area (**GrLivArea**, scaled in 100 sq. ft. increments as preferred by realtors) and whether this relationship differs by neighborhood.
@@ -83,7 +83,15 @@ Housing-Prices-Regression/
 
 All analyses were performed in **R** Full, well-commented code is available in the repository (and included in the project appendix).
 
-## Results Summary (TBD)
+## Results Summary 
+
+|Model             | Adjusted R²| PRESS| CV RMSE (log)|     AIC|Kaggle Score |
+|:-----------------|-----------:|-----:|-------------:|-------:|:------------|
+|SLR               |      0.5256|   111|        0.1255|   380.4|---          |
+|MLR1              |      0.5574|   103|        0.1265|   280.9|---          |
+|MLR2              |      0.9167|   Inf|        0.1265| -2053.9|---          |
+|model_mlr3        |      0.8638|    33|        0.1260| -1407.0|---          |
+|model_mlr3_normal |      0.8561|    34|        0.1265| -1347.0|---          |
 
 ## Deliverables
 - **Written Report**: PDF (Introduction, Data Description, Analysis 1, Analysis 2, Conclusion, Appendix with code).

@@ -13,14 +13,16 @@
 
 library(tidyverse)
 library(caret)
+library(here)
 
 # =============================================================================
 # Section 1: Data Loading and Initial Preparation (factoring)
 # =============================================================================
 
 # Load the data output from Data Cleaning.rmd
-train <- read.csv("data/train_cleaned.csv")
-test <- read.csv("data/test_cleaned.csv")
+# Using here() ensures this works regardless of working directory
+train <- read.csv(here("Data/train_cleaned.csv"))
+test  <- read.csv(here("Data/test_cleaned.csv"))
 
 # Comprehensive factor levels from data_description.txt
 # This ensures all possible levels are present (single source of truth)
@@ -115,7 +117,6 @@ test <- test |>
 # Constants and sequential/irrelevant columns
 # 95% usage is considered constant value
 Removed = c(
-  "Id", # sequential, no predictive value
   "GarageYrBlt", # Highly Correlated with YearBuilt
   "YearRemodAdd", # Highly Correlated with YearBuilt
   "GarageCars", # Paired with GarageArea

@@ -1,8 +1,8 @@
 ---
 title: "Analysis 2: Predictive Modeling for House Prices"
-description: "This analysis focuses on building predictive models to forecast future trends based on historical data.
+description: "This analysis focuses on building predictive models to forecast future trends based on historical data."
 author: "Aaron Powell & Joshua Samuel"
-date: r.Sys.Date()
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -11,7 +11,9 @@ library(tidyverse)
 library(ggplot2)
 library(GGally)
 library(car)
-source("code/utils_data_prep.R") # Data cleaned and prepped for LR
+library(purrr)
+library(here)
+source(here("code", "utils_data_prep.R"))
 ```
 
 ## Simple Linear Regression
@@ -122,7 +124,7 @@ The model displays overfit and normality concerns. We will work on improving the
 
 First we will look for linearity among numerical predictors.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Get numeric predictors (exclude SalePrice)
 
 # Exclude the two extreme outliers identified earlier
@@ -158,6 +160,8 @@ ggplot(train_long, aes(x = Value, y = log(SalePrice))) +
     strip.text = element_text(size = 8)
   )
 ```
+
+#### Testing numerical predictors
 
 Reviewing the scatterplots of numeric data against log(SalePrice) with loess smoothers:
 
@@ -211,10 +215,6 @@ vif(full)
 
 There's overwhelming evidence to suggest TotalBsmtSF in a model with GrLivArea has meaningful predictive power (partial f-test p-value <.0001). Any attempts to add other bsmt variables results in high multicolinearity. 
 
-```{r}
-feature_selection = c(feature_selection, 'TotalBsmtSF')
-```
-
 GarageArea shows a possible linear relationship with log(SalePrice) but with some outliers at the high end. We may consider grouping all garage variables and testing for lack of fit against a model with GarageArea as the only garage predictor.
 
 ```{r}
@@ -262,7 +262,7 @@ anova(reduced, full)
 vif(full)
 ```
 
-There's evidence to suggest Halfbath may have some predictive power (partial f-test p-value = 0.0002).
+There's evidence to suggest Halfbath may have some predictive power (partial f-test p-value = 0.0095).
 
 Flat relationships with log(SalePrice) are observed and will be removed from our model:
 BedroomAbvGr, BsmtFullBath, BsmtHalfBath, EnclosedPorch, HalfBath, KitchenAbvGr, LowQualFinSf, MiscVal, OpenPorchSF, PoolArea, ScreenPorch, X3SsnPorch, YearBuilt.
@@ -271,71 +271,573 @@ Considering these values have potential linearity, but too strong of grouping at
 
 LotFrontage has imputed values that may be skewing the relationship. We will proceed with caution. 
 
-```{r}
-Removed = union(Removed, c('X1stFlrSF', 'X2ndFlrSF', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'BsmtFullBath', 'BsmtHalfBath', 'GarageFinish', 'GarageQual', 'GarageCond', 'WoodDeckSF', 'BedroomAbvGr', 'BsmtFullBath', 'BsmtHalfBath', 'EnclosedPorch', 'KitchenAbvGr', 'LowQualFinSf', 'MiscVal', 'OpenPorchSF', 'PoolArea', 'ScreenPorch', 'X3SsnPorch', 'YearBuilt'))
+#### Results
 
+```{r}
+Removed = union(
+  Removed, c(
+    'X1stFlrSF', 'X2ndFlrSF', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 
+    'BsmtFinType1', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 
+    'BsmtFullBath', 'BsmtHalfBath', 'GarageFinish', 'GarageQual', 'GarageCond', 
+    'WoodDeckSF', 'BedroomAbvGr', 'BsmtFullBath', 'BsmtHalfBath', 'EnclosedPorch', 
+    'KitchenAbvGr', 'LowQualFinSf', 'MiscVal', 'OpenPorchSF', 'PoolArea', 
+    'ScreenPorch', 'X3SsnPorch', 'YearBuilt'
+  )
+)
+```
+
+#### Testing categorical predictors
+
+```{r}
+library(patchwork)
+
+# Identify all categorical predictors
+cat_vars <- train_filtered |> 
+  select(where(~is.factor(.) || is.character(.))) |> 
+  names()
+
+# Function to visualize one categorical predictor
+plot_categorical <- function(var_name) {
+  train_filtered |> 
+    ggplot(aes(
+      x = reorder(.data[[var_name]], log(SalePrice), FUN = median),
+      y = log(SalePrice)
+    )) +
+    geom_boxplot(outlier.alpha = 0.6) +
+    labs(
+      title = paste("log(SalePrice) by", var_name),
+      subtitle = paste("Levels:", length(unique(train_filtered[[var_name]]))),
+      x = NULL,
+      y = "log(SalePrice)"
+    ) +
+    theme_bw(base_size = 12)
+}
+
+wrap_plots(map(cat_vars[1:6], plot_categorical), ncol = 2)
+wrap_plots(map(cat_vars[7:12], plot_categorical), ncol = 2)
+wrap_plots(map(cat_vars[13:18], plot_categorical), ncol = 2)
+wrap_plots(map(cat_vars[19:24], plot_categorical), ncol = 2)
+wrap_plots(map(cat_vars[25:30], plot_categorical), ncol = 2)
+wrap_plots(map(cat_vars[31:36], plot_categorical), ncol = 2)
+```
+
+We'll focus on variables that may not have a strong relationship with SalePrice to consider removing from the model. We've confirmed GrLivArea, GarageArea, TotalBsmtSF, and FullBath have strong relationships with SalePrice so we will test other categorical predictors against a reduced model with these four predictors.
+
+```{r}
+# Ordered evaluation of all categorical predictors by RSS drop
+evaluate_all_categorical <- function() {
+  base_formula <- "log(SalePrice) ~ GrLivArea + GarageArea + TotalBsmtSF + FullBath"
+  
+  results <- map_dfr(cat_vars, function(var_name) {
+    full_formula <- as.formula(paste(base_formula, "+", var_name))
+    
+    reduced <- lm(as.formula(base_formula), data = train_filtered)
+    full    <- lm(full_formula, data = train_filtered)
+    
+    anova_result <- anova(reduced, full)
+    
+    tibble(
+      Variable   = var_name,
+      `RSS Drop` = round(anova_result$`Sum of Sq`[2], 4),
+      `Adj R²`   = round(summary(full)$adj.r.squared, 4),
+      `p-value`  = format.pval(anova_result$`Pr(>F)`[2], digits = 3),
+      Levels     = length(unique(train_filtered[[var_name]]))
+    )
+  }) |> 
+    arrange(desc(`RSS Drop`))
+  
+  print(results, n = Inf)
+  invisible(results)
+}
+
+results <- evaluate_all_categorical()
+```
+
+#### Results
+
+We'll use a 5 RSS drop threshold to determine which predictors to keep. This is somewhat arbitrary but provides a way to focus on predictors that are providing meaningful improvements to the model fit.
+
+```{r}
+Removed = union(
+  Removed, c(
+    'LandSlope', 'RoofStyle', 'YrSold', 'MoSold', 'RoofMatl', 
+    'Fence', 'Condition2', 'LandContour', 'LotConfig', 'Alley', 
+    'Heating', 'ExterCond', 'MasVnrType', 'LotShape', 'Condition1', 
+    'PavedDrive', 'HouseStyle', 'Electrical', 'SaleType', 'Functional', 
+    'SaleConditon', 'BldgType', 'FireplaceQu'
+  )
+)
+```
+
+### Multicollinearity Check
+
+```{r}
 train_filtered = train |> 
   slice(-c(524, 1299)) |> 
   select(-any_of(Removed))
 ```
 
-left off at this point. Ready to look at box plots for categorical predictors and visually inspect for linearity and potential interactions.
-
-
+Now down to 25 predictors. We will check for multicollinearity using VIF and remove any predictors with VIF > 5, starting with the most extreme values.
 
 ```{r}
-vif_values <- vif(model_mlr2)
-print(vif_values[vif_values > 5]) # start with the most extreme VIF values and work down
+model_mlr2 <- lm(log(SalePrice) ~ . - Exterior2nd, data = train_filtered) # Removing Exterior2nd due to high VIF and low RSS drop)
+summary(model_mlr2)
+
+par(mfrow = c(2, 2))
+plot(model_mlr2)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(model_mlr2$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(model_mlr2$residuals), sd = sd(model_mlr2$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+
+# show which variables are problematic
+vif_values <- car::vif(model_mlr2)
+vif_values |> 
+  as_tibble(rownames = "Variable") |> 
+  arrange(desc(`GVIF^(1/(2*Df))`)) |> 
+  mutate(across(where(is.numeric), round, 3))
 ```
 
+The model has some multicollinearity issues with GrLivArea, GarageArea, and TotalBsmtSF. However, these are some of the most important predictors in the model and removing them would significantly reduce the model's predictive power. We will consider combining these predictors into a single predictor.
 
-outline
+Exterior2nd and TotRmsAbvGrd presented the next highest VIF values and were not providing meaningful improvements to the model fit, so we will remove them from the model.
+
+```{r}
+Removed = union(Removed, c('Exterior2nd', 'TotRmsAbvGrd'))
+
+train_filtered = train |> 
+  slice(-c(524, 1299)) |> 
+  select(-any_of(Removed)) |>
+  mutate(TotalSF = GrLivArea + TotalBsmtSF + GarageArea) |> 
+  select(-c(GrLivArea, TotalBsmtSF, GarageArea))
+
+model_mlr2 <- lm(log(SalePrice) ~ ., data = train_filtered)
+summary(model_mlr2)
+
+par(mfrow = c(2, 2))
+plot(model_mlr2)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(model_mlr2$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(model_mlr2$residuals), sd = sd(model_mlr2$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+
+# show which variables are problematic
+vif_values <- car::vif(model_mlr2)
+vif_values |> 
+  as_tibble(rownames = "Variable") |> 
+  arrange(desc(`GVIF^(1/(2*Df))`)) |> 
+  mutate(across(where(is.numeric), round, 3))
+
+reduced = lm(log(SalePrice) ~ TotalSF, data = train_filtered)
+anova(reduced, model_mlr2)
+```
+
+model_mlr2 still has significantly more predictive power than a single-variable TotalSF model. We'll proceed with stepwise starting with highest RSS drop variables and checking for multicollinearity at each step.
+
+### Stepwise Feature Selection
+
+We will forgo reviewing residual plots during this step until we begin transformations on predictor variables.
+
+```{r}
+model_mlr2.1 = lm(log(SalePrice) ~ TotalSF + Neighborhood, data = train_filtered)
+summary(model_mlr2.1)
+anova(reduced, model_mlr2.1)
+vif(model_mlr2.1)
+  
+model_mlr2.2 = lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual, data = train_filtered)
+summary(model_mlr2.2)
+anova(model_mlr2.1, model_mlr2.2)
+vif(model_mlr2.2)
+
+model_mlr2.3 = lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual, data = train_filtered)
+summary(model_mlr2.3)
+anova(model_mlr2.2, model_mlr2.3)
+vif(model_mlr2.3)
+
+model_mlr2.4 = lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual + MSSubClass, data = train_filtered)
+summary(model_mlr2.4)
+anova(model_mlr2.3, model_mlr2.4)
+vif(model_mlr2.4)
+
+model_mlr2.5 = lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual + MSSubClass + KitchenQual, data = train_filtered)
+summary(model_mlr2.5)
+anova(model_mlr2.4, model_mlr2.5)
+vif(model_mlr2.5)
+```
+
+Both MSSubClass and Kitchen Qual provided about 1 or 2 RSS drop and started to show some multicolinearity issues. This may be due to neighborhood having 25 levels and potentially capturing some of the same information. One option is to combine levels of neighborhood into fewer groups, but for now we will proceed with the model without these two predictors.
 
 
+### Feature Transformations and Interactions
 
+```{r}
+model_mlr2.21 = lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual + TotalSF:OverallQual, data = train_filtered)
+anova(model_mlr2.2, model_mlr2.21)
+vif(model_mlr2.21)
+```
 
-# 6. Model 3+: Enhanced Multiple Linear Regression Models -------------
-# - Build at least one (ideally 2–3) improved models using techniques from class:
-#     - Add meaningful predictors (e.g., OverallQual, HouseAge, TotalSF, Neighborhood as factor/dummies, ExterQual, etc.)
-#     - Include transformations (log(GrLivArea), sqrt(LotArea), etc.)
-#     - Add interactions (e.g., GrLivArea * OverallQual, GrLivArea * Neighborhood, YearBuilt * Remod)
-#     - Feature selection: forward/backward/stepwise (stepAIC or manual), or correlation/VIF screening
-# - Example enhanced model: log(SalePrice) ~ log(GrLivArea) + OverallQual + HouseAge + TotalBath + Neighborhood + GrLivArea:OverallQual + ...
-# - Fit each as model_mlr2, model_mlr3, etc.
-# - Comment heavily on why each variable/interaction was added.
+model_mlr2.21 starts to show signs of multicollinearity when adding Neighborhood or OverallQual interactions. Our model either needs to use difference predictors or we need to collapse from 25 levels in neighborhood to a few. We do not have enough information about the neighborhood to confidently collapse into groups, so we will proceed without interactions.
 
-# 7. Model Diagnostics and Assumption Checking (Critical!) ------------
-# For EVERY model (SLR, MLR1, and enhanced):
-#   a. Residual plots:
-#      - Residuals vs. Fitted (check linearity & homoscedasticity)
-#      - Normal Q-Q plot (normality of residuals)
-#      - Scale-Location plot
-#      - Residuals vs. Leverage (outliers/influential points)
-#   b. Influential point analysis:
-#      - Cook's Distance (> 4/n threshold)
-#      - Leverage (hat values > 2p/n)
-#      - DFFITS, DFBETAS if needed
-#   c. Multicollinearity: VIF (variance inflation factors) – address if > 5–10
-#   d. Address violations:
-#      - Transformations already in model?
-#      - Remove influential points? (justify with sensitivity analysis)
-#      - Add polynomial terms or interactions if curvature present?
-# - Create diagnostic plot functions or loops to avoid repetition.
+### Final Model and Assumptions Check
 
-# 8. Model Comparison and Evaluation ----------------------------------
-# - Create a comparison table (as required in the project description):
-#   Columns: Model, Adjusted R², CV PRESS (use PRESS statistic or cvTools/ caret for cross-validation), AIC, Kaggle Score (RMSE on log scale)
-# - Compute internal CV PRESS (e.g., via leave-one-out or k-fold)
-# - Generate predictions on test set for Kaggle:
-#     - Predict log(SalePrice), exponentiate back to SalePrice
-#     - Create submission.csv with Id and SalePrice
-#     - Note the public Kaggle score for each model
-# - Clearly state which model is "best" and why (balance of fit, assumptions, predictive performance, parsimony).
+Previous review of residual plots showed showed some curviture in Q-Q Residuals and minor questions regarding normality. This is a final attempt to ensure assumptions of linear regression are met as closely as possible for our preferred model.
 
-# 9. Best Model Selection and Kaggle Submission -----------------------
-# - Export the final submission file(s)
-# - Optional: Save model objects (RDS) for Shiny app or report reproducibility
+```{r}
+model_mlr3 <- lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual, data = train_filtered)
+summary(model_mlr3)
 
-# 10. Session Info and Reproducibility --------------------------------
-# sessionInfo()
-# Save any plots/tables for the report appendix
+par(mfrow = c(2, 2))
+plot(model_mlr3)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(model_mlr3$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(model_mlr3$residuals), sd = sd(model_mlr3$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+```
+
+We will start addressing normality problems by reviewing each predictor against SalePrice and transform to fit.
+
+```{r}
+library(gridExtra)
+
+# Three plots to compare transformations
+p1 <- ggplot(train_filtered, aes(x = TotalSF, y = log(SalePrice))) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE) +
+  labs(title = "2. log(SalePrice) vs TotalSF",
+       x = "TotalSF", y = "log(SalePrice)") +
+  theme_bw(base_size = 12)
+
+p2 <- ggplot(train_filtered, aes(x = log(TotalSF), y = log(SalePrice))) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE) +
+  labs(title = "3. log(SalePrice) vs log(TotalSF)",
+       x = "log(TotalSF)", y = "log(SalePrice)") +
+  theme_bw(base_size = 12)
+
+p3 <- ggplot(train_filtered, aes(x = log(TotalSF), y = SalePrice^2)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE) +
+  labs(title = "3. log(SalePrice) vs TotalSF^2",
+       x = "TotalSF^2", y = "log(SalePrice)") +
+  theme_bw(base_size = 12)
+
+p4 <- ggplot(train_filtered, aes(x = log(TotalSF), y = SalePrice^2)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE) +
+  labs(title = "3. log(SalePrice) vs TotalSF^3/4",
+       x = "TotalSF^3/4", y = "log(SalePrice)") +
+  theme_bw(base_size = 12)
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+# Three versions of TotalSF
+model_linear <- lm(log(SalePrice) ~ TotalSF + Neighborhood + OverallQual, 
+                   data = train_filtered)
+
+model_log <- lm(log(SalePrice) ~ log(TotalSF) + Neighborhood + OverallQual, 
+                data = train_filtered)
+
+model_quad <- lm(log(SalePrice) ~ poly(TotalSF, 2) + Neighborhood + OverallQual, 
+                 data = train_filtered)
+
+par(mfrow = c(3, 3), mar = c(4, 4, 3, 1))
+
+# Row 1: Linear TotalSF (current model_mlr3)
+hist(model_linear$residuals, probability = TRUE, 
+     main = "Linear TotalSF\nResidual Histogram", col = "lightblue")
+curve(dnorm(x, mean = mean(model_linear$residuals), 
+            sd = sd(model_linear$residuals)), 
+      add = TRUE, col = "red", lwd = 2)
+qqnorm(model_linear$residuals, main = "Linear: Q-Q Plot")
+qqline(model_linear$residuals, col = "red")
+
+# Row 2: log(TotalSF)
+hist(model_log$residuals, probability = TRUE, 
+     main = "log(TotalSF)\nResidual Histogram", col = "lightblue")
+curve(dnorm(x, mean = mean(model_log$residuals), 
+            sd = sd(model_log$residuals)), 
+      add = TRUE, col = "red", lwd = 2)
+qqnorm(model_log$residuals, main = "log: Q-Q Plot")
+qqline(model_log$residuals, col = "red")
+
+# Row 3: Quadratic TotalSF
+hist(model_quad$residuals, probability = TRUE, 
+     main = "Quadratic TotalSF\nResidual Histogram", col = "lightblue")
+curve(dnorm(x, mean = mean(model_quad$residuals), 
+            sd = sd(model_quad$residuals)), 
+      add = TRUE, col = "red", lwd = 2)
+qqnorm(model_quad$residuals, main = "Quadratic: Q-Q Plot")
+qqline(model_quad$residuals, col = "red")
+
+par(mfrow = c(1, 1))
+```
+
+A quadratic transformation may be slightly beneficial, but at the cost of interpretability. Since it does not fully address concerns of normality, we will proceed with caution. 
+
+```{r}
+
+# Boxplot of log(SalePrice) by Neighborhood (ordered by median)
+ggplot(train_filtered, aes(x = reorder(Neighborhood, log(SalePrice), FUN = median), 
+                           y = log(SalePrice))) +
+  geom_boxplot(outlier.alpha = 0.6, fill = "steelblue", alpha = 0.7) +
+  geom_point(position = position_jitter(width = 0.2), alpha = 0.3, size = 1) +
+  labs(title = "log(SalePrice) by Neighborhood (ordered by median)",
+       subtitle = "Clear differences between neighborhoods",
+       x = "Neighborhood",
+       y = "log(SalePrice)") +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 9))
+
+par(mfrow = c(2, 2), mar = c(4.5, 4, 3, 1))
+
+# Residual histogram
+hist(model_linear$residuals, probability = TRUE,
+     main = "Overall Residual Histogram", col = "lightblue")
+curve(dnorm(x, mean = mean(model_linear$residuals),
+            sd = sd(model_linear$residuals)),
+      add = TRUE, col = "red", lwd = 2)
+
+# Q-Q plot
+qqnorm(model_linear$residuals, main = "Q-Q Plot of Residuals")
+qqline(model_linear$residuals, col = "red", lwd = 2)
+
+# Boxplot of residuals by Neighborhood
+boxplot(model_linear$residuals ~ train_filtered$Neighborhood,
+        main = "Residuals by Neighborhood",
+        xlab = "Neighborhood", ylab = "Residuals",
+        col = "lightblue")
+abline(h = 0, col = "red", lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+
+Unlike TotalSF, Neighborhood is categorical and will not benefit from mathmatical transformations. There are very large differences between neighborhoods. Some neighborhoods have much higher median SalePrice than others, and the variance of SalePrice also differs between neighborhoods. This may be contributing to the non-normality of residuals and heteroscedasticity. Grouping levels may effect our predictive power, so our final model will include Neighborhood as-is and a reduced model with Neighborhood grouped into fewer levels for comparison.
+
+```{r}
+# Create a grouped version of Neighborhood (4 logical tiers)
+train_filtered <- train_filtered |>
+  mutate(
+    NeighborhoodGroup = case_when(
+      Neighborhood %in% c("NoRidge", "NridgHt", "StoneBr", "Veenker", "Timber") ~ "HighEnd",
+      Neighborhood %in% c("CollgCr", "Crawfor", "ClearCr", "Somerst", "Gilbert", "NWAmes", "SawyerW", "Blmngtn") ~ "UpperMid",
+      Neighborhood %in% c("NAmes", "Mitchel", "NPkVill", "SWISU", "Sawyer", "Edwards") ~ "Middle",
+      Neighborhood %in% c("BrkSide", "OldTown", "IDOTRR", "MeadowV", "BrDale", "Blueste")~ "Lower",
+      TRUE ~ "Other"
+    )
+  )
+
+# Convert to ordered factor
+train_filtered$NeighborhoodGroup <- factor(
+  train_filtered$NeighborhoodGroup, levels = c("Lower", "Middle", "UpperMid", "HighEnd")
+)
+
+# Fit the new model with grouped neighborhoods
+model_mlr3_normal <- lm(log(SalePrice) ~ TotalSF + NeighborhoodGroup + OverallQual, data = train_filtered)
+
+# Compare the two models
+summary(model_mlr3_normal)
+cat("\n=== MODEL COMPARISON ===\n")
+cat("model_mlr3 (25 levels):     Adj R² =", round(summary(model_mlr3)$adj.r.squared, 4),
+    " | AIC =", round(AIC(model_mlr3), 1), "\n")
+cat("model_mlr3_normal (4 groups): Adj R² =", round(summary(model_mlr3_normal)$adj.r.squared, 4),
+    " | AIC =", round(AIC(model_mlr3_normal), 1), "\n")
+
+anova(model_mlr3, model_mlr3_normal)
+
+par(mfrow = c(2, 2))
+plot(model_mlr3_normal)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(
+  model_mlr3_normal$residuals, 
+  probability = TRUE, # Use density scale
+  main = "Histogram of Residuals",
+  xlab = "Residuals",
+  col = "lightblue",
+  border = "black"
+)
+
+# Add normal curve
+curve(
+  dnorm(
+    x, 
+    mean = mean(model_mlr3_normal$residuals), 
+    sd = sd(model_mlr3_normal$residuals)
+  ), 
+    add = TRUE, 
+    col = "red", 
+    lwd = 2
+)
+```
+
+There's evidence that grouping Neighborhood into 4 groups results in a significant drop in model fit while not significantly improving normality judging from visual residual plots (partial f-test p-value <.0001). The model with 25 levels of Neighborhood has better fit and predictive power.
+
+Finally we'll address any remaining outliers' leverage and Cook's distance then refit the model if needed. 
+
+```{r}
+# Focus on your best model (model_mlr3)
+p <- length(coef(model_mlr3))           # number of parameters
+n <- nrow(train_filtered)
+leverage_threshold <- 2 * p / n         # cutoff
+
+cat("Leverage threshold (2p/n):", round(leverage_threshold, 4), "\n\n")
+
+# Extract leverage and Cook's distance
+hat_values <- hatvalues(model_mlr3)
+cooks_d <- cooks.distance(model_mlr3)
+
+# Find high leverage points
+high_leverage_idx <- which(hat_values > leverage_threshold)
+
+cat("Found", length(high_leverage_idx), "high leverage points\n\n")
+
+# Show details of those observations
+if(length(high_leverage_idx) > 0) {
+  high_lev_points <- train_filtered[high_leverage_idx, ] |>
+    select(TotalSF, Neighborhood, OverallQual, SalePrice) |>
+    mutate(
+      Row = high_leverage_idx,
+      Leverage = round(hat_values[high_leverage_idx], 4),
+      Cooks_D = round(cooks_d[high_leverage_idx], 5),
+      Residual = round(model_mlr3$residuals[high_leverage_idx], 4)
+    ) |>
+    arrange(desc(Leverage))
+  
+  print(high_lev_points)
+}
+```
+
+Our data does not have outliers with > .5 Cook's distance, but it does have some high leverage points.
+
+The top 4 leverage outliers are still meaningful, representing abnormal sales conditions and unique properties. 
+
+All NPkVill obersvations show as high leverage points, but this is a unique neighborhood. This is likely a real phenomenon and not an error, so we will keep these observations in the model.
+
+## Model Comparison and Evaluation
+
+SLR = `(SalePrice | GrLivArea)`
+MLR1 = `(SalePrice | GrLivArea + FullBath)`
+MLR2 = `(SalePrice | 25 predictors)` full model after EDA considering linearily related variables
+model_mlr3 = `(SalePrice | TotalSF + Neighborhood + OverallQual)`
+model_mlr3_normal = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After grouping Neighborhood into 4 groups based on median sales price.
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+library(knitr)
+
+# Define cross-validation method
+cv_control <- trainControl(method = "cv", number = 10, savePredictions = TRUE)
+
+# Function to get 10-fold CV RMSE on log(SalePrice) scale
+cv_rmse <- function(model, data) {
+  train(log(SalePrice) ~ ., 
+        data = data, 
+        method = "lm", 
+        trControl = cv_control)$results$RMSE
+}
+
+# PRESS function (Leave-One-Out Cross Validation statistic)
+press_stat <- function(model) {
+  res <- residuals(model)
+  h   <- hatvalues(model)
+  sum((res / (1 - h))^2, na.rm = TRUE)
+}
+
+# Model Comparison Table
+model_comparison <- tibble(
+  Model                  = c("SLR", 
+                            "MLR1", 
+                            "MLR2", 
+                            "model_mlr3",
+                            "model_mlr3_normal"),
+  
+  `Adjusted R²`          = c(
+    round(summary(model_slr)$adj.r.squared, 4),
+    round(summary(model_mlr1)$adj.r.squared, 4),
+    round(summary(model_mlr2)$adj.r.squared, 4),
+    round(summary(model_mlr3)$adj.r.squared, 4),
+    round(summary(model_mlr3_normal)$adj.r.squared, 4)
+  ),
+  
+  PRESS                  = c(
+    round(press_stat(model_slr), 0),
+    round(press_stat(model_mlr1), 0),
+    round(press_stat(model_mlr2), 0),
+    round(press_stat(model_mlr3), 0),
+    round(press_stat(model_mlr3_normal), 0)
+  ),
+  
+  `CV RMSE (log)`  = c(
+    round(cv_rmse(model_slr, train_filtered), 4),
+    round(cv_rmse(model_mlr1, train_filtered), 4),
+    round(cv_rmse(model_mlr2, train_filtered), 4),
+    round(cv_rmse(model_mlr3, train_filtered), 4),
+    round(cv_rmse(model_mlr3_normal, train_filtered), 4)
+  ),
+  
+  AIC                    = c(
+    round(AIC(model_slr), 1),
+    round(AIC(model_mlr1), 1),
+    round(AIC(model_mlr2), 1),
+    round(AIC(model_mlr3), 1),
+    round(AIC(model_mlr3_normal), 1)
+  ),
+  
+  `Kaggle Score`      = c("---", "---", "---", "---", "---")
+
+)
+
+model_comparison |> 
+  kable(format = "markdown", 
+        caption = "Model Comparison Table (PRESS + 10-fold CV)",
+        align = "lrrrr")
+```
+
+## Kaggle Submission
+
+```{r, eval=FALSE}
+# Function to create Kaggle submission
+create_kaggle_submission <- function(model, filename = "submission.csv") {
+  test_pred <- predict(model, newdata = test, interval = "none")
+  submission <- tibble(
+    Id = test$Id,
+    SalePrice = exp(test_pred)
+  )
+  write_csv(submission, here("submission", filename))
+  cat("Submission saved to submission/", filename, "\n")
+}
+
+# Example usage:
+create_kaggle_submission(model_mlr3, "submission_mlr3.csv")
+```
