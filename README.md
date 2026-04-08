@@ -3,13 +3,22 @@
 **MSDS 6371 - Statistical Foundations for Data Science**  
 **Southern Methodist University**  
 
-This repository contains the work for the final project in MSDS 6371, using the [Kaggle House Prices: Advanced Regression Techniques](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) dataset. The project demonstrates modern statistical modeling techniques with a focus on **multiple linear regression**, assumption checking, influential point analysis, feature engineering (including interactions and transformations), and predictive performance evaluation.
+This repository contains the final project for MSDS 6371 using the [Kaggle House Prices: Advanced Regression Techniques](https://www.kaggle.com/c/house-prices-advanced-regression-techniques) dataset. We focus exclusively on techniques covered in the course (multiple linear regression, transformations, interactions, assumption diagnostics, influential-point analysis, and cross-validation via PRESS).
 
-Checkout the [Live app:](https://powellonpoint.shinyapps.io/Ames_Iowa_Housing_Sales_EDA_2006-2010/)
+**Live RShiny App** → [Ames Iowa Housing Sales EDA](https://powellonpoint.shinyapps.io/Ames_Iowa_Housing_Sales_EDA_2006-2010/)
+
+## Table of Contents
+- [Project Overview](#project-overview)
+- [Repository Structure](#repository-structure)
+- [Project Status](#project-status)
+- [How to Reproduce](#how-to-reproduce)
+- [Authors](#authors)
+- [Acknowledgments](#acknowledgments)
 
 ## Project Overview
 
-The Kaggle dataset includes 79 explanatory variables describing residential homes in Ames, Iowa, sold between 2006 and 2010. Our analyses address two distinct business and predictive questions:
+Century 21 Ames (Analysis 1) wants a clear, interpretable model of SalePrice versus GrLivArea (scaled per 100 sq ft) for the NAmes, Edwards, and BrkSide neighborhoods, including interaction effects.  
+Analysis 2 builds the strongest possible predictive MLR model(s) across all of Ames for Kaggle submission.
 
 ## Project Status
 
@@ -53,24 +62,30 @@ We built and compared multiple linear regression models (limited to techniques c
 ```
 Housing-Prices-Regression/
 ├── data/
-│   ├── train.csv                  # Training data with SalePrice (1460 obs)
-│   ├── train_cleaned.csv          # Cleaned training data (1460 obs)
-│   ├── test.csv                   # Test data for Kaggle submission (1459 obs)
-│   ├── test_cleaned.csv           # Cleaned test data for Kaggle submission (1459 obs)
-│   └── sample_submission.csv      # Kaggle submission template
+│   ├── train.csv # Original Kaggle files (never modify)
+│   ├── test.csv # Original Kaggle files (never modify)
+│   ├── data_description.txt # Original Kaggle files (never modify)
+│   ├── train_cleaned.csv
+│   ├── test_cleaned.csv
+│   ├── submission_slr
+│   ├── submission_mlr1
+│   ├── submission_mlr2
+│   ├── submission_mlr3
+│   ├── submission_mlr3n
+│   └── sample_submission.csv
 ├── code/
-│   ├── Data Cleaning.rmd.         # Notes and steps producing train_cleaned.csv and test_cleaned.csv
+│   ├── Data Cleaning.Rmd
 │   ├── analysis1_century21.R      # Analysis 1: Neighborhood-specific regression
 │   ├── analysis2_predictive.R     # Analysis 2: Competing predictive models
-│   ├── utils_data_prep.R          # Data preparation utilities for predictive modeling
-│   └── Executive_Summary.R
-├── shiny_app/                     # RShiny interactive dashboard
-│   ├── app.R                      # Base app
+│   └── utils_data_prep.R          # Data preparation utilities for predictive modeling
+├── shiny_app/
+│   ├── app.R
 │   └── data_descriptions.txt
-├── MSDS6371_Final_Project_Report.pdf   # Main paper
-├── appendix_code.pdf              # Full commented code
+├── reports/                    # New folder – move PDFs here
+│   ├── MSDS6371_Final_Project_Report.pdf
+│   └── appendix_code.pdf)
 ├── README.md
-├── LICENSE
+└── LICENSE
 ```
 
 ## Key Techniques Demonstrated
