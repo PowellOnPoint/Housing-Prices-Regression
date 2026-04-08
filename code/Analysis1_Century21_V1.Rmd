@@ -1,0 +1,215 @@
+---
+title: "6371 - Modeling"
+author: "Josh"
+date: "2026-04-07"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Libraries
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+# Reading in Data
+```{r}
+source("code/utils_data_prep.R") # Data cleaned and prepped for LR
+df = train
+df_n = df %>% filter(Neighborhood %in% c("NAmes", "Edwards", "BrkSide"))
+```
+
+# Modeling & Assumptions
+```{r}
+## For Just the Three Neighborhoods
+
+# Assumptions
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+
+# Assumptions for Model 1
+par(mfrow = c(2,2))
+plot(fit1)
+par(mfrow = c(1,1))
+
+# Assumptions for Model 2
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+
+
+# Same outlier Aaron caught in Data Cleaning
+df_n[(339),]
+df_n339 = df_n[-339,]
+
+fit2_no339 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood,
+                 data = df_n339)
+
+summary(fit2)
+summary(fit2_no339)
+
+par(mfrow = c(2,2))
+plot(fit2_no339)
+par(mfrow = c(1,1))
+
+# when removing obs 339, 131 still appears to be an outlier
+df_n339[131,]
+
+
+# both are in Edwards and Edwards regression line would be MUCH more steeper if they werent in there
+# however, Aaron looked at both obs and nothing apparent that we should remove outlier
+# we will just make note of it
+
+
+
+# Assumptions
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+
+# Assumptions for Model 1
+par(mfrow = c(2,2))
+plot(fit1)
+par(mfrow = c(1,1))
+
+# Assumptions for Model 2
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+
+####
+
+# Given question says realtors prefer to talk about living area in increments of 100 sq. ft
+df_n$GrLivArea100 <- df_n$GrLivArea / 100
+fit2 <- lm(log(SalePrice) ~ GrLivArea100 * Neighborhood, data = df_n)
+summary(fit2)
+
+# Centering so Neighborhood coefficients are being compared at average living area and NOT when living area = 0 (which is not practical)
+df_n$GrLivArea100_c <- df_n$GrLivArea100 - mean(df_n$GrLivArea100)
+fit2 <- lm(log(SalePrice) ~ GrLivArea100_c * Neighborhood, data = df_n)
+summary(fit2)
+
+# Assumptions for Model 2
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+
+
+
+
+# INFERENCE FROM FOLLOWING RESULTS SHOULD BE TAKEN LIGHTLY
+
+### Comparing the Metrics
+set.seed(123)
+
+# splitting train data into train/test
+n <- nrow(df_n)
+train_idx <- sample(seq_len(n), size = 0.7 * n)
+
+train_df <- df_n[train_idx, ]
+test_df  <- df_n[-train_idx, ]
+
+fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = train_df)
+fit2 <- lm(log(SalePrice) ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = train_df)
+
+# predictions
+pred_fit1 <- predict(fit1, newdata = test_df)
+
+pred_log <- predict(fit2, newdata = test_df)
+smear <- mean(exp(residuals(fit2)))
+pred_fit2 <- exp(pred_log) * smear
+
+
+# metrics
+rmse <- function(actual, pred) {
+  sqrt(mean((actual - pred)^2))
+}
+
+mae <- function(actual, pred) {
+  mean(abs(actual - pred))
+}
+
+r2_test <- function(actual, pred) {
+  1 - sum((actual - pred)^2) / sum((actual - mean(actual))^2)
+}
+
+results <- data.frame(
+  Model = c("Original Scale", "Log Scale Back-Transformed"),
+  RMSE  = c(
+    rmse(test_df$SalePrice, pred_fit1),
+    rmse(test_df$SalePrice, pred_fit2)
+  ),
+  MAE   = c(
+    mae(test_df$SalePrice, pred_fit1),
+    mae(test_df$SalePrice, pred_fit2)
+  ),
+  Test_R2 = c(
+    r2_test(test_df$SalePrice, pred_fit1),
+    r2_test(test_df$SalePrice, pred_fit2)
+  )
+)
+results
+# non-log model appears to be outperforming log model on test data (partition of training data)
+```
+
+
+
+```{r}
+# CONFIDENCE INTERVALS
+
+fit1 <- lm(log(SalePrice) ~ GrLivArea100_c * Neighborhood, data = df_n)
+
+# 
+# fit1 = lm(SalePrice ~ GrLivArea + Neighborhood + GrLivArea*Neighborhood, data = df_n)
+summary(fit1)
+
+cv = qt(.975, 383-6)
+
+est = summary(fit1)$coefficients[, "Estimate"]
+se = summary(fit1)$coefficients[, "Std. Error"]
+
+# Beta_0
+l = est[[1]] - (cv * se[[1]])
+u = est[[1]] + (cv * se[[1]])
+b0_ci = c(l, u)
+
+# Beta_1
+l = est[[2]] - (cv * se[[2]])
+u = est[[2]] + (cv * se[[2]])
+b1_ci = c(l, u)
+
+# Beta_2
+l = est[[3]] - (cv * se[[3]])
+u = est[[3]] + (cv * se[[3]])
+b2_ci = c(l, u)
+
+# Beta_3
+l = est[[4]] - (cv * se[[4]])
+u = est[[4]] + (cv * se[[4]])
+b3_ci = c(l, u)
+
+# Beta_4
+l = est[[5]] - (cv * se[[5]])
+u = est[[5]] + (cv * se[[5]])
+b4_ci = c(l, u)
+
+# Beta_5
+l = est[[6]] - (cv * se[[6]])
+u = est[[6]] + (cv * se[[6]])
+b5_ci = c(l, u)
+
+b0_ci
+b1_ci
+b2_ci
+b3_ci
+b4_ci
+b5_ci
+
+
+```
+
+
+
+
+

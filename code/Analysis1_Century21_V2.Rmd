@@ -1,0 +1,310 @@
+---
+title: "6371 - Analysis 1_Century21_V2"
+author: "Josh"
+date: "2026-04-08"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Libraries
+
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+# Objective
+
+Century 21 Ames would like to understand how the sale price of a home is related to its above-ground living area (`GrLivArea`) for homes in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. In particular, the company wants to know:
+
+1. how sale price changes as living area increases, and  
+2. whether that relationship differs by neighborhood.
+
+Because realtors prefer to discuss living area in increments of **100 square feet**, the analysis will present the effect of living area on that scale. In addition, model assumptions will be assessed, and any potentially influential observations will be identified and discussed.
+
+# Read and Prepare Data
+
+```{r}
+# had to comment out in order to knit
+# source("code/utils_data_prep.R")  # cleaned data prepared for linear regression
+
+train = read.csv('/Users/joshtsamuel/SMU/DS-6371 Statistical Foundations/Housing-Prices-Regression/Data/train_cleaned.csv')
+
+df <- train
+
+# Restrict analysis to the three neighborhoods of interest
+df_n <- df %>%
+  filter(Neighborhood %in% c("NAmes", "Edwards", "BrkSide"))
+```
+
+# Initial Model Comparison
+
+To begin, two candidate models were considered:
+
+- a model on the original sale price scale
+- a model using a log transformation of sale price
+
+Both models allow the relationship between living area and sale price to vary by neighborhood through an interaction term.
+
+```{r}
+fit1 <- lm(SalePrice ~ GrLivArea * Neighborhood, data = df_n)
+fit2 <- lm(log(SalePrice) ~ GrLivArea * Neighborhood, data = df_n)
+```
+
+## Diagnostic Plots for Original-Scale Model
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit1)
+par(mfrow = c(1, 1))
+```
+
+## Diagnostic Plots for Log-Scale Model
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit2)
+par(mfrow = c(1, 1))
+```
+
+## Initial Assessment
+
+Based on the residual diagnostics, the model using `log(SalePrice)` provided slightly better support for the linear regression assumptions. In particular, the log transformation improved the residual behavior (specifically heteroskedasticity) enough to make it the preferred model for inference.
+
+# Investigation of Potential Influential Observations
+
+One observation had already been flagged during earlier data cleaning.
+
+```{r}
+df_n[339, ]
+```
+
+To evaluate its impact, the log-scale model was refit after removing observation 339.
+
+```{r}
+df_n_no339 <- df_n[-339, ]
+
+fit2_no339 <- lm(log(SalePrice) ~ GrLivArea * Neighborhood, data = df_n_no339)
+
+summary(fit2)
+summary(fit2_no339)
+```
+
+## Diagnostic Plots After Removing Observation 339
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit2_no339)
+par(mfrow = c(1, 1))
+```
+
+After removing observation 339, another observation still appeared somewhat unusual.
+
+```{r}
+df_n_no339[131, ]
+```
+
+Both of these observations were in the **Edwards** neighborhood, and removing them would noticeably affect the fitted Edwards regression line. However, after reviewing the observations (Aaron did in-depth analysis in Data Cleaning.rmd), there was no clear substantive reason to remove them. Therefore, they were retained in the final analysis and simply noted as potentially influential.
+
+# Final Model
+
+Because the client prefers interpretations in units of **100 square feet**, living area was rescaled accordingly.
+
+```{r}
+df_n$GrLivArea100 <- df_n$GrLivArea / 100
+```
+
+A centered version of this variable was also created. Centering does **not** change the fitted values or the overall model fit. It simply makes the neighborhood coefficients easier to interpret by comparing neighborhoods at the **average living area**, rather than at 0 square feet.
+
+```{r}
+df_n$GrLivArea100_c <- df_n$GrLivArea100 - mean(df_n$GrLivArea100)
+```
+
+The final model used for inference was:
+
+```{r}
+fit_final <- lm(log(SalePrice) ~ GrLivArea100_c * Neighborhood, data = df_n)
+summary(fit_final)
+```
+
+## Confidence Intervals for Model Coefficients
+
+```{r}
+confint(fit_final)
+```
+
+# Diagnostic Plots for Final Model
+
+```{r}
+par(mfrow = c(2, 2))
+plot(fit_final)
+par(mfrow = c(1, 1))
+```
+
+## Assumption Check Summary
+
+Based on the diagnostic plots for the final model:
+
+- the relationship between the predictors and `log(SalePrice)` appears reasonably linear
+- the residual variance is more stable than in the original-scale model
+- the residual distribution appears more consistent with normality
+- while a small number of observations may be somewhat influential, there was not sufficient justification to remove them from the analysis
+
+Overall, the log-scale model appears to provide an acceptable fit for answering the client’s question.
+
+# Interpreting the Final Model
+
+Because the response variable is `log(SalePrice)`, the effect of living area is most naturally interpreted in terms of **approximate percent changes** in sale price.
+
+For the **reference neighborhood (BrkSide)**, the coefficient of `GrLivArea100_c` represents the estimated change in log sale price associated with an additional 100 square feet of living area. Converting this coefficient to a percent change can be done as follows:
+
+```{r}
+pct_change <- 100 * (exp(coef(fit_final)) - 1)
+
+data.frame(
+  Term = names(pct_change),
+  Percent_Change = paste0(round(pct_change, 2), "%")
+)
+```
+
+For the other neighborhoods, the living area slope must be adjusted by adding the appropriate interaction term.
+
+## Neighborhood-Specific Slopes
+
+When **BrkSide** is the reference neighborhood:
+
+- **BrkSide slope** = `GrLivArea100_c`
+- **Edwards slope** = `GrLivArea100_c + GrLivArea100_c:NeighborhoodEdwards`
+- **NAmes slope** = `GrLivArea100_c + GrLivArea100_c:NeighborhoodNAmes`
+
+The code below computes the neighborhood-specific effect of an additional 100 square feet and expresses each effect as an approximate percent change in sale price.
+
+```{r}
+coefs <- coef(fit_final)
+
+beta_brkside <- coefs["GrLivArea100_c"]
+beta_edwards <- coefs["GrLivArea100_c"] + coefs["GrLivArea100_c:NeighborhoodEdwards"]
+beta_names   <- coefs["GrLivArea100_c"] + coefs["GrLivArea100_c:NeighborhoodNAmes"]
+
+slope_summary <- data.frame(
+  Neighborhood = c("BrkSide", "Edwards", "NAmes"),
+  Percent_Change = paste0(
+    round(100 * (exp(c(beta_brkside, beta_edwards, beta_names)) - 1), 2),
+    "%"
+  )
+)
+
+slope_summary
+```
+
+# Confidence Intervals for Neighborhood-Specific Slopes
+
+Because the Edwards and NAmes slopes are sums of regression coefficients, their confidence intervals must be computed using linear combinations.
+
+```{r}
+library(multcomp)
+
+K <- rbind(
+  "BrkSide" = c(0, 1, 0, 0, 0, 0),
+  "Edwards" = c(0, 1, 0, 0, 1, 0),
+  "NAmes"   = c(0, 1, 0, 0, 0, 1)
+)
+
+glht_slopes <- glht(fit_final, linfct = K)
+slope_ci <- confint(glht_slopes)
+```
+
+The intervals returned above are on the **log scale**. The following code converts the point estimates and confidence limits to approximate percent changes in sale price per additional 100 square feet.
+
+```{r}
+slope_est <- coef(glht_slopes)
+slope_lwr <- slope_ci$confint[, "lwr"]
+slope_upr <- slope_ci$confint[, "upr"]
+
+slope_results <- data.frame(
+  Neighborhood = names(slope_est),
+  Percent_Change = paste0(round(100 * (exp(slope_est) - 1), 2), "%"),
+  CI_Lower = paste0(round(100 * (exp(slope_lwr) - 1), 2), "%"),
+  CI_Upper = paste0(round(100 * (exp(slope_upr) - 1), 2), "%")
+)
+
+slope_results
+```
+
+Based on the fitted model, the relationship between living area and sale price was positive in each of the three neighborhoods, although the estimated magnitude of that relationship varied by neighborhood. In **BrkSide**, each additional 100 square feet of above-ground living area was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "BrkSide"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "BrkSide"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "BrkSide"]`**). In **Edwards**, the corresponding estimated increase was **`r slope_results$Percent_Change[slope_results$Neighborhood == "Edwards"]`** (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "Edwards"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "Edwards"]`**). In **NAmes**, each additional 100 square feet was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "NAmes"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "NAmes"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "NAmes"]`**).
+
+# Optional Predictive Comparison
+
+Although the main purpose of this analysis is inference rather than prediction, a simple train/test split was used to compare predictive performance between the original-scale and log-scale models.
+
+These predictive results should be interpreted cautiously.
+
+```{r}
+set.seed(123)
+
+n <- nrow(df_n)
+train_idx <- sample(seq_len(n), size = 0.7 * n)
+
+train_df <- df_n[train_idx, ]
+test_df  <- df_n[-train_idx, ]
+
+fit1_pred <- lm(SalePrice ~ GrLivArea * Neighborhood, data = train_df)
+fit2_pred <- lm(log(SalePrice) ~ GrLivArea * Neighborhood, data = train_df)
+
+pred_fit1 <- predict(fit1_pred, newdata = test_df)
+
+pred_log <- predict(fit2_pred, newdata = test_df)
+smear <- mean(exp(residuals(fit2_pred)))
+pred_fit2 <- exp(pred_log) * smear
+
+rmse <- function(actual, pred) {
+  sqrt(mean((actual - pred)^2))
+}
+
+mae <- function(actual, pred) {
+  mean(abs(actual - pred))
+}
+
+r2_test <- function(actual, pred) {
+  1 - sum((actual - pred)^2) / sum((actual - mean(actual))^2)
+}
+
+results <- data.frame(
+  Model = c("Original Scale", "Log Scale Back-Transformed"),
+  RMSE = c(
+    rmse(test_df$SalePrice, pred_fit1),
+    rmse(test_df$SalePrice, pred_fit2)
+  ),
+  MAE = c(
+    mae(test_df$SalePrice, pred_fit1),
+    mae(test_df$SalePrice, pred_fit2)
+  ),
+  Test_R2 = c(
+    r2_test(test_df$SalePrice, pred_fit1),
+    r2_test(test_df$SalePrice, pred_fit2)
+  )
+)
+
+results
+```
+
+In this particular split, the original-scale model may appear to perform somewhat better on prediction metrics. However, because the log-scale model better satisfies the regression assumptions, it remains the preferred model for inference.
+
+# Conclusion
+
+For homes in **NAmes**, **Edwards**, and **BrkSide**, sale price is clearly related to above-ground living area, and the fitted model allows that relationship to differ by neighborhood.
+
+The final model used `log(SalePrice)` as the response and expressed living area in units of **100 square feet**. This made the regression assumptions more reasonable while also allowing the effect of living area to be interpreted in a way that is meaningful for the client.
+
+Based on the fitted interaction model:
+
+- the relationship between living area and sale price is statistically significant
+- the estimated effect of an additional 100 square feet can be quantified separately for each neighborhood
+- the interaction terms allow us to assess whether that relationship differs across neighborhoods
+
+Potentially unusual observations were identified and investigated, especially within the Edwards neighborhood. Since there was no clear substantive justification for removing them, they were retained in the final model and acknowledged in the discussion.
+
+Overall, the analysis suggests that larger living area is associated with higher sale price, but the strength of that relationship may vary depending on whether the house is located in **NAmes**, **Edwards**, or **BrkSide**.
