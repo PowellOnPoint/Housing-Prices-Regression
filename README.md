@@ -18,7 +18,7 @@ The Kaggle dataset includes 79 explanatory variables describing residential home
 | 1    | **Data Understanding & Loading**            | ✅Complete | `train.csv` (1460 obs) and `test.csv` loaded; reviewed `data_description.txt` |
 | 2    | **Data Cleaning & Preprocessing**           | ✅Complete | Training set clean; test set NA imputation and factors complete |
 | 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
-| 4    | **Analysis 1 – Century 21 Client Model**    | ✅Complete | Interaction model built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; interpretations and confidence intervals next |
+| 4    | **Analysis 1 – Century 21 Client Model**    | ✅Complete | Model built and interpreted |
 | 5    | **Feature Engineering & Transformations**   | ✅Complete | Features selected! |
 | 6    | **Analysis 2 – Predictive Modeling**        | ✅Complete | Models complete! |
 | 7    | **Model Diagnostics & Assumption Checking** | ✅Complete | Assumptions met! Continually assessing model performance |
