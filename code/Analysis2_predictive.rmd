@@ -19,6 +19,10 @@ source("code/utils_data_prep.R") # Data cleaned and prepped for LR
 Taking a simple approach first, we will model log(SalePrice) as a function of Above grade (ground) living area square feet (GrLivArea). GrLivArea is a strong predictor of SalePrice and is commonly used in housing price models.
 
 ```{r}
+# Compute correlation matrix from numeric variables only
+numeric_train <- train |> select(where(is.numeric))
+cor_matrix <- cor(numeric_train, use = "complete.obs")
+
 saleprice_cor <- cor_matrix[, "SalePrice"]
 cor_df <- tibble(
   Variable = names(saleprice_cor),
@@ -57,54 +61,238 @@ curve(dnorm(x, mean = mean(model_slr$residuals), sd = sd(model_slr$residuals)),
 
 ## Initial Multiple Linear Regression
 
-## Full Multiple Linear Regression
+Number of Full Bathrooms (FullBath) is another highly correlated predictor of SalePrice. We will add it to the model to see if it improves fit and addresses any issues with the SLR model.
 
-We will proceed with log(SalePrice) since Analysis 1 displayed some heteroscedasticity. 
+```{r}
+model_mlr1 <- lm(log(SalePrice) ~ GrLivArea + FullBath, data = train, subset = c(-1299, -524, -636, -1124))
+summary(model_mlr1)
+
+par(mfrow = c(2, 2))
+plot(model_mlr1)
+par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(model_mlr1$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(model_mlr1$residuals), sd = sd(model_mlr1$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
+```
+
+636 is a 3395 sqft house sold for 200,000 as a abnormal sale. This is a large house sold for a very low price. Since abnormal sales can be anything from forclosure to short sale or trade, we may consider excluding this group. For this model we will only exclude the one outlier. 
+
+Only explaining another 3% of the variance, this model is not a significant improvement over the SLR. The residual plots show similar patterns to the SLR, with some improvement in homoscedasticity but still some curvature in the residuals vs fitted plot. The histogram of residuals looks more normal. 
+
+## Enhanced Multiple Linear Regression Models
+
+Starting with a full model including all predictors and then we will work down to a more parsimonious model. 
 
 ```{r}
 full_model <- lm(log(SalePrice) ~ ., data = train)
+summary(full_model)
 par(mfrow = c(2, 2))
 plot(full_model)
 par(mfrow = c(1, 1))
+
+# Histogram with normal distribution overlaid
+hist(full_model$residuals, 
+     probability = TRUE,          # Use density scale
+     main = "Histogram of Residuals",
+     xlab = "Residuals",
+     col = "lightblue",
+     border = "black")
+# Add normal curve
+curve(dnorm(x, mean = mean(full_model$residuals), sd = sd(full_model$residuals)), 
+      add = TRUE, 
+      col = "red", 
+      lwd = 2)
 ```
 
+Histogram of residuals looks very condensed to the center and long tailed. Clearly not normal. Studentized residuals show some curvature in the residuals vs fitted plot, but overall the model seems to be doing a good job of capturing the variance in SalePrice with the log transformation.
 
+The model displays overfit and normality concerns. We will work on improving the model by removing some predictors and adding interactions and transformations.
 
+### Linearity Check
 
-The summary of the full model NA values for several predictors. This is likely due to perfect multicollinearity (e.g., YearBuilt and YearRemodAdd are highly correlated). 
+First we will look for linearity among numerical predictors.
 
 ```{r}
-vif_values <- vif(full_model)
+# Get numeric predictors (exclude SalePrice)
+
+# Exclude the two extreme outliers identified earlier
+train_filtered <- train |> 
+  slice(-c(524, 1299)) # These two really skew the relationships and are not representative of the general market
+
+numeric_predictors <- train_filtered |> 
+  select(where(is.numeric), -SalePrice) |> 
+  names()
+
+# Reshape to long format for faceting
+train_long <- train_filtered |> 
+  pivot_longer(
+    cols = all_of(numeric_predictors),
+    names_to = "Predictor",
+    values_to = "Value"
+  )
+
+# Create the linearity diagnostic plot
+ggplot(train_long, aes(x = Value, y = log(SalePrice))) +
+  geom_point(alpha = 0.3, size = 0.8) +
+  geom_smooth(method = "loess", color = "red", linewidth = 1, se = FALSE) +
+  facet_wrap(~ Predictor, scales = "free_x", ncol = 4) +
+  labs(
+    title = "Linearity Check: Numeric Predictors vs log(SalePrice)",
+    subtitle = "Red line = loess smoother. Look for straight lines (good linearity).",
+    x = NULL,
+    y = "log(SalePrice)"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 8)
+  )
+```
+
+Reviewing the scatterplots of numeric data against log(SalePrice) with loess smoothers:
+
+GrLiveArea shows a possible quadratic relationship, with diminishing returns at a higher value. 
+
+X1stFlrSF and X2ndFlrSf show linear relationships. But this may already be captured by GrLivArea, which is the sum of 1st and 2nd floor area. We may consider removing these two predictors to address multicollinearity.
+
+```{r}
+reduced <- lm(log(SalePrice) ~ GrLivArea, data = train_filtered)
+full <- lm(log(SalePrice) ~ GrLivArea + X1stFlrSF + X2ndFlrSF, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+While there is evidence to suggest 1stFlrSF and 2ndFlrSF improve the model in a statistical sense, multicollinearity occurs because GrLIvArea is effectively of sum of the two variables. 
+
+TotRmsAbvGrd show possible linearity but could be capturing the same information as GrLivArea, so we may consider removing it to address multicollinearity.
+
+```{r}
+full <- lm(log(SalePrice) ~ GrLivArea + TotRmsAbvGrd, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There is overwhelming evidence adding TotRmsAbvGrd to a model containing GrLivArea produces meaningful predictive power(parital f-test p-value <.0001). Therefore we will keep TotRmsAbvGrd in the model. 
+
+LotArea shows a possible linear relationship, with diminishing returns at lower values and an outlier at the high end or possible quadratic relationship at extremes. 
+
+```{r}
+full <- lm(log(SalePrice) ~ GrLivArea + LotArea, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There is overwhelming evidence adding LotArea produces meaningful predictive power(parital f-test p-value <.0001). Therefore we will keep LotArea in the model.
+
+BSmtFinSf1 and TotalBsmtSF show possible linear relationship with one outlier at the high end. We may consider grouping all basement variables and testing for lack of fit against a model with TotalBsmtSF as the only basement predictor.
+
+```{r}
+full = lm(log(SalePrice) ~ GrLivArea + TotalBsmtSF, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea + TotalBsmtSF, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + TotalBsmtSF + BsmtQual + BsmtExposure, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There's overwhelming evidence to suggest TotalBsmtSF in a model with GrLivArea has meaningful predictive power (partial f-test p-value <.0001). Any attempts to add other bsmt variables results in high multicolinearity. 
+
+```{r}
+feature_selection = c(feature_selection, 'TotalBsmtSF')
+```
+
+GarageArea shows a possible linear relationship with log(SalePrice) but with some outliers at the high end. We may consider grouping all garage variables and testing for lack of fit against a model with GarageArea as the only garage predictor.
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + GarageArea, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea + GarageArea, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + GarageArea + GarageType, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There's overwhelming evidence to suggest GarageArea in a model with GrLivArea and GarageType has meaningful predictive power (partial f-test p-value <.0001). Any attempts to add other Garage variables other than GarageType results in high multicolinearity. 
+
+FirePlaces show possible linear relationship with log(SalePrice) but may not be enough to provide predictive power. We may consider grouping all fireplace variables and testing for lack of fit against a model with FirePlaces as the only fireplace predictor.
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + Fireplaces, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea + Fireplaces, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + Fireplaces + FireplaceQu, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There's overwhelming evidence to suggest Fireplaces in a model with GrLivArea and FireplaceQu has meaningful predictive power (partial f-test p-value <.0001). 
+
+While WoodDeckSF has potential linear relationship, the variance is too high while linearity is nearly flat. We may consider removing this predictor.
+
+We saw earliier in model_mlr1 that FullBath has a linear relationship with log(SalePrice) and improved our model by adding 3% to the R². We will keep it in the model unless it shows multicollinearity with other predictors.
+
+```{r}
+reduced = lm(log(SalePrice) ~ GrLivArea + FullBath, data = train_filtered)
+full = lm(log(SalePrice) ~ GrLivArea + FullBath + HalfBath, data = train_filtered)
+anova(reduced, full)
+vif(full)
+```
+
+There's evidence to suggest Halfbath may have some predictive power (partial f-test p-value = 0.0002).
+
+Flat relationships with log(SalePrice) are observed and will be removed from our model:
+BedroomAbvGr, BsmtFullBath, BsmtHalfBath, EnclosedPorch, HalfBath, KitchenAbvGr, LowQualFinSf, MiscVal, OpenPorchSF, PoolArea, ScreenPorch, X3SsnPorch, YearBuilt.
+
+Considering these values have potential linearity, but too strong of grouping at 0, we may consider using binary predictors: MasVnrArea, WoodDeckSf
+
+LotFrontage has imputed values that may be skewing the relationship. We will proceed with caution. 
+
+```{r}
+Removed = union(Removed, c('X1stFlrSF', 'X2ndFlrSF', 'BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinSF1', 'BsmtFinType2', 'BsmtFinSF2', 'BsmtUnfSF', 'BsmtFullBath', 'BsmtHalfBath', 'GarageFinish', 'GarageQual', 'GarageCond', 'WoodDeckSF', 'BedroomAbvGr', 'BsmtFullBath', 'BsmtHalfBath', 'EnclosedPorch', 'KitchenAbvGr', 'LowQualFinSf', 'MiscVal', 'OpenPorchSF', 'PoolArea', 'ScreenPorch', 'X3SsnPorch', 'YearBuilt'))
+
+train_filtered = train |> 
+  slice(-c(524, 1299)) |> 
+  select(-any_of(Removed))
+```
+
+left off at this point. Ready to look at box plots for categorical predictors and visually inspect for linearity and potential interactions.
+
+
+
+```{r}
+vif_values <- vif(model_mlr2)
 print(vif_values[vif_values > 5]) # start with the most extreme VIF values and work down
 ```
 
 
 outline
 
-# - Create key derived features (examples relevant to our course):
-#     - log_SalePrice (for modeling and Kaggle submission)
-#     - HouseAge = YrSold - YearBuilt
-#     - TotalSF = GrLivArea + TotalBsmtSF
-#     - TotalBath = FullBath + HalfBath + BsmtFullBath*0.5 + BsmtHalfBath*0.5
-#     - Quality interactions or dummy variables for high-impact categoricals (e.g., OverallQual, Neighborhood, ExterQual, KitchenQual)
-#     - Any other feature creation justified by domain knowledge or EDA (e.g., log transformations on skewed continuous vars like LotArea, GrLivArea).
-# - Filter or subset if needed, but remember: Analysis 2 uses ALL neighborhoods.
 
-# 3. Exploratory Data Analysis (EDA) for Modeling --------------------
-# - Summary statistics and correlations (focus on SalePrice and key predictors).
-# - Visualizations: scatterplots (SalePrice vs. GrLivArea, colored by key factors), histograms of SalePrice (and log(SalePrice)), boxplots by categorical vars.
-# - Identify potential transformations and interactions early.
 
-# 4. Model 1: Simple Linear Regression (Baseline) ---------------------
-# - Formula: log(SalePrice) ~ GrLivArea   (or SalePrice if you prefer; discuss choice)
-# - Fit with lm()
-# - Store model object (e.g., model_slr)
-# - Basic summary and initial diagnostics
-
-# 5. Model 2: Required Multiple Linear Regression (MLR1) --------------
-# - Formula: log(SalePrice) ~ GrLivArea + FullBath
-# - Fit with lm()
-# - Store as model_mlr1
 
 # 6. Model 3+: Enhanced Multiple Linear Regression Models -------------
 # - Build at least one (ideally 2–3) improved models using techniques from class:
