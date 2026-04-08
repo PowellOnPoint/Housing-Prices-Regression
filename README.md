@@ -18,7 +18,7 @@ The Kaggle dataset includes 79 explanatory variables describing residential home
 | 1    | **Data Understanding & Loading**            | ✅Complete | `train.csv` (1460 obs) and `test.csv` loaded; reviewed `data_description.txt` |
 | 2    | **Data Cleaning & Preprocessing**           | ✅Complete | Training set nearly clean; test set NA imputation and factor cleaning still in progress |
 | 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
-| 4    | **Analysis 1 – Century 21 Client Model**    | 🔄In Progress | Interaction model (`SalePrice ~ GrLivArea * Neighborhood`) built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; assumption checks & Cook’s D next |
+| 4    | **Analysis 1 – Century 21 Client Model**    | 🔄In Progress | Interaction model built for NAmes/Edwards/BrkSide; scaling GrLivArea to 100 sq ft units; interpretations and confidence intervals next |
 | 5    | **Feature Engineering & Transformations**   | 🔄In Progress | log(SalePrice), selected interactions, and dummy variables underway |
 | 6    | **Analysis 2 – Predictive Modeling**        | 🔄In Progress | SLR & MLR (`GrLivArea + FullBath`) complete; enhanced MLR with interactions in progress |
 | 7    | **Model Diagnostics & Assumption Checking** | 🔄In Progress | Residual plots, normality, homoscedasticity, Cook’s D, leverage, and VIF for all models |
@@ -27,7 +27,7 @@ The Kaggle dataset includes 79 explanatory variables describing residential home
 | 10   | **Final Report & Documentation**            | 🔄In Progress|  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
 
 **Current Focus (as of April 7, 2026)**:  
-Complete assumption checks and influential point analysis for Analysis 1 → diagnose and compare models for Analysis 2.
+Estimates, interpretations and confidence intervals for Analysis 1 → diagnose and compare models for Analysis 2.
 
 ### Analysis 1: Client-Focused Regression for Century 21 Ames
 Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. We investigated the relationship between **SalePrice** and living area (**GrLivArea**, scaled in 100 sq. ft. increments as preferred by realtors) and whether this relationship differs by neighborhood.
