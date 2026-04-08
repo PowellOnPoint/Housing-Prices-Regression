@@ -336,11 +336,12 @@ Viewing all obervations with missing values after cleaning to understand what we
 
 ```{r}
 # Show all rows with any NA values
-df_test_clean |> 
-  filter(if_any(everything(), is.na))
+df_test_clean |> filter(if_any(everything(), is.na))
 ```
 
-After we fit a model, predict() will return NA if any explanatory variable is NA for a given observation. We will need to address how to handle these missing values if our model includes any of these variables. To progress forward with our analysis, we will hold the 12 observations with missing values in the test dataset and address them after we have built our model and understand which variables are most important for prediction.
+After we fit a model, predict() will return NA if any explanatory variable is NA for a given observation. We will need to address how to handle these missing values if our model includes any of these variables. To progress forward with our analysis, we will hold the 12 observations with missing values in the test dataset and address them after we have built our model and understand which variables are most important for prediction. 4/6/2026
+
+Returning all observations now that we have completed modeling and feature selection. 6/8/2026
 
 ```{r}
 df2_test_clean = df_test_clean |> 
@@ -352,5 +353,5 @@ df2_test_clean = df_test_clean |>
 
 ```{r}
 write_csv(df_clean, "data/train_cleaned.csv")
-write_csv(df2_test_clean, "data/test_cleaned.csv")
+write_csv(df_test_clean, "data/test_cleaned.csv")
 ```

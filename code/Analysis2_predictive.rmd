@@ -3,7 +3,12 @@ title: "Analysis 2: Predictive Modeling for House Prices"
 description: "This analysis focuses on building predictive models to forecast future trends based on historical data."
 author: "Aaron Powell & Joshua Samuel"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
 ---
 
 ```{r setup, include=FALSE}
@@ -129,7 +134,7 @@ First we will look for linearity among numerical predictors.
 
 # Exclude the two extreme outliers identified earlier
 train_filtered <- train |> 
-  slice(-c(524, 1299)) # These two really skew the relationships and are not representative of the general market
+  filter(!Id %in% c(524, 1299)) # These two really skew the relationships and are not representative of the general market
 
 numeric_predictors <- train_filtered |> 
   select(where(is.numeric), -SalePrice) |> 
@@ -416,7 +421,7 @@ Exterior2nd and TotRmsAbvGrd presented the next highest VIF values and were not 
 Removed = union(Removed, c('Exterior2nd', 'TotRmsAbvGrd'))
 
 train_filtered = train |> 
-  slice(-c(524, 1299)) |> 
+  filter(!Id %in% c(524, 1299)) |> 
   select(-any_of(Removed)) |>
   mutate(TotalSF = GrLivArea + TotalBsmtSF + GarageArea) |> 
   select(-c(GrLivArea, TotalBsmtSF, GarageArea))
@@ -749,8 +754,13 @@ All NPkVill obersvations show as high leverage points, but this is a unique neig
 SLR = `(SalePrice | GrLivArea)`
 MLR1 = `(SalePrice | GrLivArea + FullBath)`
 MLR2 = `(SalePrice | 25 predictors)` full model after EDA considering linearily related variables
-model_mlr3 = `(SalePrice | TotalSF + Neighborhood + OverallQual)`
-model_mlr3_normal = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After grouping Neighborhood into 4 groups based on median sales price.
+MLR3 = `(SalePrice | TotalSF + Neighborhood + OverallQual)`
+MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After grouping Neighborhood into 4 groups based on median sales price.
+
+- **Adjusted R²**: How well the model explains variance (higher is better)
+- **PRESS**: Leave-one-out cross-validation error (lower is better)
+- **CV RMSE (log scale)**: 10-fold cross-validation root mean squared error (lower is better)
+- **AIC**: Balance between fit and complexity (lower is better)
 
 ```{r, warning=FALSE, message=FALSE}
 library(caret)
@@ -779,8 +789,8 @@ model_comparison <- tibble(
   Model                  = c("SLR", 
                             "MLR1", 
                             "MLR2", 
-                            "model_mlr3",
-                            "model_mlr3_normal"),
+                            "MLR3",
+                            "MLR3.N"),
   
   `Adjusted R²`          = c(
     round(summary(model_slr)$adj.r.squared, 4),
@@ -824,20 +834,98 @@ model_comparison |>
         align = "lrrrr")
 ```
 
+Model MLR3 has the best performance across all metrics, with the highest adjusted R², lowest PRESS, lowest CV RMSE, and lowest AIC. The model with grouped Neighborhood (MLR3.N) has slightly worse performance than MLR3 but better AIC, suggesting that the detailed neighborhood information is important enough to justify the added complexity.
+
 ## Kaggle Submission
+
+First need to mutate the test dataset to have the same predictors as our final model. We will also need to impute any missing values in the test set using the same methods as the training set.
+
+```{r}
+test = test |> 
+  mutate(TotalSF = GrLivArea + TotalBsmtSF + GarageArea)
+
+test <- test |>
+  mutate(
+    NeighborhoodGroup = case_when(
+      Neighborhood %in% c("NoRidge", "NridgHt", "StoneBr", "Veenker", "Timber") ~ "HighEnd",
+      Neighborhood %in% c("CollgCr", "Crawfor", "ClearCr", "Somerst", "Gilbert", "NWAmes", "SawyerW", "Blmngtn") ~ "UpperMid",
+      Neighborhood %in% c("NAmes", "Mitchel", "NPkVill", "SWISU", "Sawyer", "Edwards") ~ "Middle",
+      Neighborhood %in% c("BrkSide", "OldTown", "IDOTRR", "MeadowV", "BrDale", "Blueste")~ "Lower",
+      TRUE ~ "Other"
+    )
+  )
+
+# Convert to ordered factor
+test$NeighborhoodGroup <- factor(
+  test$NeighborhoodGroup, levels = c("Lower", "Middle", "UpperMid", "HighEnd")
+)
+```
+
 
 ```{r, eval=FALSE}
 # Function to create Kaggle submission
 create_kaggle_submission <- function(model, filename = "submission.csv") {
-  test_pred <- predict(model, newdata = test, interval = "none")
+  
+  # Align factor levels to prevent "new levels" error
+  test_processed <- test
+  for (var in names(model$xlevels)) {
+    if (var %in% names(test_processed)) {
+      test_processed[[var]] <- factor(test_processed[[var]], 
+                                      levels = model$xlevels[[var]])
+    }
+  }
+  
+  # Generate predictions on log scale
+  test_pred <- predict(model, newdata = test_processed, interval = "none")
+  
+  # Back-transform to original scale
+  saleprice <- exp(test_pred)
+  
+  # Count and replace any NAs with median
+  na_count <- sum(is.na(saleprice))
+  if (na_count > 0) {
+    median_price <- median(saleprice, na.rm = TRUE)
+    saleprice[is.na(saleprice)] <- median_price
+    cat("→ Replaced", na_count, "NA predictions with median SalePrice =", 
+        round(median_price, 2), "\n")
+  }
+  
+  # Create submission in exact format as sample_submission.csv
   submission <- tibble(
-    Id = test$Id,
-    SalePrice = exp(test_pred)
+    Id        = test$Id,
+    SalePrice = as.double(saleprice)   # ensure dbl type
   )
-  write_csv(submission, here("submission", filename))
-  cat("Submission saved to submission/", filename, "\n")
+  
+  write_csv(submission, here("Data", filename))
+  
+  cat("Submission saved to: Data/", filename, "\n")
+  cat("Rows:", nrow(submission), 
+      " | Final NAs in SalePrice:", sum(is.na(submission$SalePrice)), "\n\n")
+  
+  invisible(na_count)
 }
 
-# Example usage:
+create_kaggle_submission(model_slr, "submission_slr.csv")
+create_kaggle_submission(model_mlr1, "submission_mlr1.csv")
+create_kaggle_submission(model_mlr2, "submission_mlr2.csv")
 create_kaggle_submission(model_mlr3, "submission_mlr3.csv")
+create_kaggle_submission(model_mlr3_normal, "submission_mlr3n.csv")
 ```
+
+Submission saved to: Data/ submission_slr.csv 
+Rows: 1459  | Final NAs in SalePrice: 0 
+
+Submission saved to: Data/ submission_mlr1.csv 
+Rows: 1459  | Final NAs in SalePrice: 0 
+
+→ Replaced 9 NA predictions with median SalePrice = 155986.3 
+Submission saved to: Data/ submission_mlr2.csv 
+Rows: 1459  | Final NAs in SalePrice: 0 
+
+→ Replaced 2 NA predictions with median SalePrice = 157249.2 
+Submission saved to: Data/ submission_mlr3.csv 
+Rows: 1459  | Final NAs in SalePrice: 0 
+
+→ Replaced 2 NA predictions with median SalePrice = 157175.4 
+Submission saved to: Data/ submission_mlr3n.csv 
+Rows: 1459  | Final NAs in SalePrice: 0 
