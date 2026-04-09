@@ -2,13 +2,16 @@
 title: "Analysis 2: Predictive Modeling for House Prices"
 description: "This analysis focuses on building predictive models to forecast future trends based on historical data."
 author: "Aaron Powell & Joshua Samuel"
-date: "`r Sys.Date()`"
-output:
-  html_document:
+date: today
+format:
+  html:
     toc: true
-    toc_float: true
-    number_sections: true
-    code_folding: show
+    toc-depth: 4
+    toc-location: left
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
 ---
 
 ```{r setup, include=FALSE}
@@ -20,6 +23,10 @@ library(purrr)
 library(here)
 source(here("code", "utils_data_prep.R"))
 ```
+
+# Introduction
+
+This analysis focuses on building predictive models for house prices using linear regression techniques, starting with simple linear regression and progressing to more complex multiple linear regression models.
 
 ## Simple Linear Regression
 
