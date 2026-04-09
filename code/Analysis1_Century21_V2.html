@@ -610,6 +610,38 @@ AIC(fit_final)</code></pre>
 PRESS &lt;- sum((residuals(fit_final) / (1 - hatvalues(fit_final)))^2)
 PRESS</code></pre>
 <pre><code>## [1] 14.01493</code></pre>
+<p>Comparing final model’s metrics the non-log model</p>
+<pre class="r"><code>fit_nonlog &lt;- lm(SalePrice ~ GrLivArea100_c * Neighborhood, data = df_n)
+summary(fit_nonlog)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = SalePrice ~ GrLivArea100_c * Neighborhood, data = df_n)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -74948 -14828    960  13409 159563 
+## 
+## Coefficients:
+##                                    Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)                          131678       3596  36.623  &lt; 2e-16 ***
+## GrLivArea100_c                         8716        919   9.484  &lt; 2e-16 ***
+## NeighborhoodEdwards                   -2879       4505  -0.639  0.52316    
+## NeighborhoodNAmes                     12609       4018   3.138  0.00183 ** 
+## GrLivArea100_c:NeighborhoodEdwards    -1119       1196  -0.935  0.35035    
+## GrLivArea100_c:NeighborhoodNAmes      -3285       1016  -3.233  0.00134 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 26830 on 375 degrees of freedom
+## Multiple R-squared:  0.5125, Adjusted R-squared:  0.506 
+## F-statistic: 78.83 on 5 and 375 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code># AIC
+AIC(fit_nonlog)</code></pre>
+<pre><code>## [1] 8859.372</code></pre>
+<pre class="r"><code># CV PRESS
+PRESS &lt;- sum((residuals(fit_nonlog) / (1 - hatvalues(fit_nonlog)))^2)
+PRESS</code></pre>
+<pre><code>## [1] 282791737788</code></pre>
 <p>Note that all coefficients were statistically signficant at an alpha
 = 0.05 level of signficance <strong>except</strong>
 NeighborhoodEdwards.</p>

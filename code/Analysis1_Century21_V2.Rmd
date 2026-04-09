@@ -150,6 +150,24 @@ PRESS <- sum((residuals(fit_final) / (1 - hatvalues(fit_final)))^2)
 PRESS
 
 ```
+
+Comparing final model's metrics the non-log model
+
+```{r}
+fit_nonlog <- lm(SalePrice ~ GrLivArea100_c * Neighborhood, data = df_n)
+summary(fit_nonlog)
+
+
+# AIC
+AIC(fit_nonlog)
+
+# CV PRESS
+PRESS <- sum((residuals(fit_nonlog) / (1 - hatvalues(fit_nonlog)))^2)
+PRESS
+
+```
+
+
 Note that all coefficients were statistically signficant at an alpha = 0.05 level of signficance **except** NeighborhoodEdwards. 
 
 
