@@ -1,7 +1,7 @@
 ---
 title: "6371 - Analysis 1_Century21_V2"
 author: "Josh"
-date: "2026-04-08"
+date: "`r Sys.Date()`"
 output: html_document
 editor_options: 
   chunk_output_type: console
