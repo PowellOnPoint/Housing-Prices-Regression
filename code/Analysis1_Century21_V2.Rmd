@@ -107,7 +107,14 @@ After removing observation 339, another observation still appeared somewhat unus
 df_n_no339[131, ]
 ```
 
-Both of these observations were in the **Edwards** neighborhood, and removing them would noticeably affect the fitted Edwards regression line. However, after reviewing the observations (Aaron did in-depth analysis in Data Cleaning.rmd), there was no clear substantive reason to remove them. Therefore, they were retained in the final analysis and simply noted as potentially influential.
+## Removal of Two Outliers (ID = 1299, 524)
+Both of these observations were in the **Edwards** neighborhood, and removing them would noticeably affect the fitted Edwards regression line. After reviewing the observations, we have decided that it would be best to remove the two outliers from the analysis due to them being extreme and rare cases of partial build and a foreclosure. These observations had Id = 1299 and 524 respectively. 
+
+```{r}
+df_n <- df_n %>%
+  filter(!(Id %in% c(1299, 524)))
+
+```
 
 # Final Model
 
@@ -129,6 +136,8 @@ The final model used for inference was:
 fit_final <- lm(log(SalePrice) ~ GrLivArea100_c * Neighborhood, data = df_n)
 summary(fit_final)
 ```
+Note that all coefficients were statistically signficant at an alpha = 0.05 level of signficance **except** NeighborhoodEdwards. 
+
 
 ## Confidence Intervals for Model Coefficients
 
@@ -234,7 +243,7 @@ slope_results <- data.frame(
 slope_results
 ```
 
-Based on the fitted model, the relationship between living area and sale price was positive in each of the three neighborhoods, although the estimated magnitude of that relationship varied by neighborhood. In **BrkSide**, each additional 100 square feet of above-ground living area was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "BrkSide"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "BrkSide"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "BrkSide"]`**). In **Edwards**, the corresponding estimated increase was **`r slope_results$Percent_Change[slope_results$Neighborhood == "Edwards"]`** (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "Edwards"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "Edwards"]`**). In **NAmes**, each additional 100 square feet was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "NAmes"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "NAmes"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "NAmes"]`**).
+Based on the fitted model, the relationship between living area and sale price was positive in each of the three neighborhoods, although the estimated magnitude of that relationship varied by neighborhood. In **BrkSide**, each additional 100 square feet of above-ground living area was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "BrkSide"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "BrkSide"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "BrkSide"]`**). In **Edwards**, the corresponding estimated increase was **`r slope_results$Percent_Change[slope_results$Neighborhood == "Edwards"]`** (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "Edwards"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "Edwards"]`**). However, we must note that the result was **not statistically signficant**.  In **NAmes**, each additional 100 square feet was associated with an estimated **`r slope_results$Percent_Change[slope_results$Neighborhood == "NAmes"]`** increase in sale price (95% CI: **`r slope_results$CI_Lower[slope_results$Neighborhood == "NAmes"]`** to **`r slope_results$CI_Upper[slope_results$Neighborhood == "NAmes"]`**).
 
 # Optional Predictive Comparison
 
