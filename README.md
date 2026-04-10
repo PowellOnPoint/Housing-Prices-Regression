@@ -33,7 +33,7 @@ Analysis 2 builds the strongest possible predictive MLR model(s) across all of A
 | 7    | **Model Diagnostics & Assumption Checking** | ✅Complete | Assumptions met! Continually assessing model performance |
 | 8    | **Model Comparison & Selection**            | ✅Complete | Diagnostic and results below |
 | 9    | **Prediction & Kaggle Submission**          | ✅Complete | Generate predictions on cleaned test set using best model |
-| 10   | **Final Report & Documentation**            | 🔄In Progress |  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
+| 10   | **Final Report & Documentation**            | 🔄In Progress |  Final Draft publishing |
 
 **Current Focus (as of April 7, 2026)**:  
 Final write up and summary
@@ -104,7 +104,12 @@ SLR = `(SalePrice | GrLivArea)`
 MLR1 = `(SalePrice | GrLivArea + FullBath)`
 MLR2 = `(SalePrice | 25 predictors)` full model after EDA considering linearily related variables
 MLR3 = `(SalePrice | TotalSF + Neighborhood + OverallQual)`
-MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After grouping Neighborhood into 4 groups based on median sales price.
+MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)
+
+Adjusted R²: How well the model explains variance (higher is better)
+PRESS: Leave-one-out cross-validation error (lower is better)
+CV RMSE (log scale): 10-fold cross-validation root mean squared error (lower is better)
+AIC: Balance between fit and complexity (lower is better)
 
 |Model             | Adjusted R²| PRESS| CV RMSE (log)|     AIC|Kaggle Score |
 |:-----------------|-----------:|-----:|-------------:|-------:|:------------|
