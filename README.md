@@ -128,9 +128,10 @@ MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After groupin
 
 ## How to Reproduce
 1. Clone the repository: `git clone https://github.com/PowellOnPoint/Housing-Prices-Regression.git`
-2. Open the R scripts or SAS programs in the `code/` folder.
-3. Run the Shiny app locally from the `Rshiny EDA/` directory.
-4. The project paper contains full details and interpretations.
+2. run `Data Cleaning.rmd` for cleaned.csv datasets
+3. render each analysis .rmd files individually. 
+4. Run the Shiny app locally from the `Rshiny EDA/` directory.
+5. The project paper contains full details and interpretations.
 
 ## Authors
 - Aaron Powell – MSDS Candidate, Southern Methodist University  
