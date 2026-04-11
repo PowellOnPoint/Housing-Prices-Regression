@@ -26,17 +26,14 @@ Analysis 2 builds the strongest possible predictive MLR model(s) across all of A
 |------|---------------------------------------------|-------------|--------------------|
 | 1    | **Data Understanding & Loading**            | ✅Complete | `train.csv` (1460 obs) and `test.csv` loaded; reviewed `data_description.txt` |
 | 2    | **Data Cleaning & Preprocessing**           | ✅Complete | Training set clean; test set NA imputation and factors complete |
-| 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | Univariate/bivariate analysis done; RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
-| 4    | **Analysis 1 – Century 21 Client Model**    | ✅Complete | Model built and interpreted |
+| 3    | **Exploratory Data Analysis (EDA)**         | ✅Complete | RShiny app deployed for GrLivArea vs SalePrice by neighborhood |
+| 4    | **Analysis 1 – Century 21 Client Model**    | ✅Complete | Models complete! |
 | 5    | **Feature Engineering & Transformations**   | ✅Complete | Features selected! |
 | 6    | **Analysis 2 – Predictive Modeling**        | ✅Complete | Models complete! |
 | 7    | **Model Diagnostics & Assumption Checking** | ✅Complete | Assumptions met! Continually assessing model performance |
-| 8    | **Model Comparison & Selection**            | ✅Complete | Diagnostic and results below |
-| 9    | **Prediction & Kaggle Submission**          | ✅Complete | Generate predictions on cleaned test set using best model |
-| 10   | **Final Report & Documentation**            | 🔄In Progress |  Drafting 7-page report (Analysis 1 + Analysis 2 sections); code appendix and Shiny link to be added |
-
-**Current Focus (as of April 7, 2026)**:  
-Final write up and summary
+| 8    | **Model Comparison & Selection**            | ✅Complete | Optimal model selected|
+| 9    | **Prediction & Kaggle Submission**          | ✅Complete | Kaggle Scores below! |
+| 10   | **Final Report & Documentation**            | ✅Complete | Feedback encouraged!|
 
 ### Analysis 1: Client-Focused Regression for Century 21 Ames
 Century 21 Ames sells homes only in the **NAmes**, **Edwards**, and **BrkSide** neighborhoods. We investigated the relationship between **SalePrice** and living area (**GrLivArea**, scaled in 100 sq. ft. increments as preferred by realtors) and whether this relationship differs by neighborhood.
@@ -62,9 +59,9 @@ We built and compared multiple linear regression models (limited to techniques c
 ```
 Housing-Prices-Regression/
 ├── data/
-│   ├── train.csv # Original Kaggle files (never modify)
-│   ├── test.csv # Original Kaggle files (never modify)
-│   ├── data_description.txt # Original Kaggle files (never modify)
+│   ├── train.csv # Original Kaggle files
+│   ├── test.csv # Original Kaggle files
+│   ├── data_description.txt # Original Kaggle files
 │   ├── train_cleaned.csv
 │   ├── test_cleaned.csv
 │   ├── submission_slr
@@ -75,15 +72,19 @@ Housing-Prices-Regression/
 │   └── sample_submission.csv
 ├── code/
 │   ├── Data Cleaning.Rmd
-│   ├── analysis1_century21.R      # Analysis 1: Neighborhood-specific regression
-│   ├── analysis2_predictive.R     # Analysis 2: Competing predictive models
+│   ├── analysis1_century21.rmd    # Analysis 1: Neighborhood-specific regression
+│   ├── analysis1_century21.html   # rendered using knitr
+│   ├── analysis2_predictive.rmd   # Analysis 2: Competing predictive models
+│   ├── Analysis2_predicitve.html. # rendered using quarto
+│   ├── Analysis2_predicitve_files # Quarto plot outputs
 │   └── utils_data_prep.R          # Data preparation utilities for predictive modeling
 ├── shiny_app/
 │   ├── app.R
 │   └── data_descriptions.txt
-├── reports/                    # New folder – move PDFs here
-│   ├── MSDS6371_Final_Project_Report.pdf
-│   └── appendix_code.pdf)
+├── reports/                       # New folder – move PDFs here
+│   ├── MSDS6371 Final Project Report.pdf
+│   ├── appendix 2 to MSDS6371 Final Project Report.pdf
+│   └── appendix 3 to MSDS6371 Final Project Report.pdf
 ├── README.md
 └── LICENSE
 ```
