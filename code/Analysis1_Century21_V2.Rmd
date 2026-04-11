@@ -142,6 +142,11 @@ The final model used for inference was:
 fit_final <- lm(log(SalePrice) ~ GrLivArea100_c * Neighborhood, data = df_n)
 summary(fit_final)
 
+# Plots
+par(mfrow = c(2, 2))
+plot(fit_final)
+par(mfrow = c(1, 1))
+
 # AIC
 AIC(fit_final)
 
