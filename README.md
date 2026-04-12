@@ -111,6 +111,7 @@ MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After groupin
 - **PRESS**: Leave-one-out cross-validation error (lower is better)
 - **CV RMSE (log scale)**: 10-fold cross-validation root mean squared error (lower is better)
 - **AIC**: Balance between fit and complexity (lower is better)
+- **Kaggle Score**: Performance on the Kaggle leaderboard. RMSE between log(Predicted) and log(Actual). (lower is better)
 
 |Model             | Adjusted R²| PRESS| CV RMSE (log)|     AIC|Kaggle Score |
 |:-----------------|-----------:|-----:|-------------:|-------:|:------------|
