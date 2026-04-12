@@ -107,6 +107,11 @@ MLR2 = `(SalePrice | 25 predictors)` full model after EDA considering linearily 
 MLR3 = `(SalePrice | TotalSF + Neighborhood + OverallQual)`
 MLR3.N = `(SalePrice | TotalSF + NeighborhoodGroup + OverallQual)` After grouping Neighborhood into 4 groups based on median sales price.
 
+- **Adjusted R²**: How well the model explains variance (higher is better)
+- **PRESS**: Leave-one-out cross-validation error (lower is better)
+- **CV RMSE (log scale)**: 10-fold cross-validation root mean squared error (lower is better)
+- **AIC**: Balance between fit and complexity (lower is better)
+
 |Model             | Adjusted R²| PRESS| CV RMSE (log)|     AIC|Kaggle Score |
 |:-----------------|-----------:|-----:|-------------:|-------:|:------------|
 |SLR               |      0.5256|   111|        0.1255|   380.4| 0.29893     |
